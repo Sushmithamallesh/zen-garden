@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zen Garden · Return to focus</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f0e2;
+      --paper-light: #fffaf0;
+      --ink: #0e281a;
+      --muted: #385043;
+      --vermilion: #c51f13;
+      --moss: #286137;
+      --pine: #09331c;
+      --rake-line: rgba(197, 31, 19, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse at 78% 72%, transparent 0 68px, var(--rake-line) 69px 70px, transparent 71px 84px, var(--rake-line) 85px 86px, transparent 87px 102px, var(--rake-line) 103px 104px, transparent 105px),
+        repeating-radial-gradient(ellipse at 8% 0%, transparent 0 28px, rgba(40, 97, 55, 0.10) 29px 30px, transparent 31px 48px),
+        var(--paper);
+      color: var(--ink);
+      font-family: ui-rounded, "SF Pro Rounded", "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .stone-field {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .stone {
+      position: absolute;
+      border-radius: 50%;
+      background: var(--pine);
+      box-shadow: inset -12px -14px 24px rgba(0,0,0,.15), 0 20px 45px rgba(9,51,28,.14);
+    }
+
+    .stone.one { width: 118px; height: 70px; right: 12%; bottom: 15%; transform: rotate(-7deg); opacity: .80; }
+    .stone.two { width: 56px; height: 42px; right: 21%; bottom: 11%; background: #79766b; opacity: .68; }
+    .stone.three { width: 42px; height: 31px; right: 8%; bottom: 25%; background: var(--vermilion); opacity: .88; }
+
+    main {
+      position: relative;
+      z-index: 1;
+      width: min(620px, calc(100% - 48px));
+      padding: 54px 56px;
+      border: 1px solid rgba(255,255,255,.72);
+      border-radius: 30px;
+      background: rgba(251, 247, 236, .86);
+      box-shadow: 0 30px 80px rgba(9,51,28,.12);
+      backdrop-filter: blur(10px);
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 34px;
+      border-radius: 50%;
+      background: var(--pine);
+      color: rgba(255,255,255,.92);
+      font-size: 21px;
+      letter-spacing: -4px;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--vermilion);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .19em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 520px;
+      margin: 0;
+      font-size: clamp(36px, 5vw, 57px);
+      font-weight: 510;
+      line-height: 1.05;
+      letter-spacing: -.035em;
+    }
+
+    .message {
+      max-width: 440px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.55;
+    }
+
+    .domain {
+      display: inline-block;
+      margin-top: 31px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      background: rgba(88, 107, 77, .10);
+      color: var(--moss);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .breath {
+      position: absolute;
+      top: 58px;
+      right: 58px;
+      width: 54px;
+      height: 54px;
+      border: 1px solid rgba(88, 107, 77, .23);
+      border-radius: 50%;
+      animation: breathe 5s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: scale(.72); opacity: .35; }
+      50% { transform: scale(1.18); opacity: .78; }
+    }
+
+    @media (max-width: 600px) {
+      main { padding: 38px 30px; }
+      .breath { top: 38px; right: 34px; }
+      .stone-field { opacity: .6; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stone-field" aria-hidden="true">
+    <div class="stone one"></div>
+    <div class="stone two"></div>
+    <div class="stone three"></div>
+  </div>
+  <main>
+    <div class="mark" aria-hidden="true">◌</div>
+    <div class="breath" aria-hidden="true"></div>
+    <p class="eyebrow">Zen Garden · focus is active</p>
+    <h1>This path is closed for now.</h1>
+    <p class="message">Return to the work you chose. The urge will pass—even if you do nothing with it.</p>
+    <div class="domain" id="domain">A distracting website</div>
+  </main>
+
+  <script>
+    const attemptedDomain = decodeURIComponent(window.location.hash.slice(1));
+    if (attemptedDomain) document.getElementById('domain').textContent = attemptedDomain;
+  </script>
+</body>
+</html>
