@@ -20,11 +20,15 @@ struct ZenGardenBackdrop: View {
             ZStack {
                 GardenTheme.ricePaper
 
-                Image("ZenGardenHero", bundle: .module)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .clipped()
+                if let heroImage = AppResources.image(named: "ZenGardenHero") {
+                    Image(nsImage: heroImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .clipped()
+                } else {
+                    GardenFallbackBackdrop()
+                }
 
                 LinearGradient(
                     colors: [
@@ -38,6 +42,26 @@ struct ZenGardenBackdrop: View {
             }
         }
         .ignoresSafeArea()
+    }
+}
+
+private struct GardenFallbackBackdrop: View {
+    var body: some View {
+        Canvas { context, size in
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(GardenTheme.ricePaper))
+
+            for index in 0..<16 {
+                let offset = CGFloat(index) * 14
+                var path = Path()
+                path.move(to: CGPoint(x: -24, y: size.height * 0.56 + offset))
+                path.addCurve(
+                    to: CGPoint(x: size.width + 24, y: size.height * 0.48 + offset),
+                    control1: CGPoint(x: size.width * 0.30, y: size.height * 0.38 + offset),
+                    control2: CGPoint(x: size.width * 0.68, y: size.height * 0.72 + offset)
+                )
+                context.stroke(path, with: .color(GardenTheme.rakeLine.opacity(0.22)), lineWidth: 1)
+            }
+        }
     }
 }
 

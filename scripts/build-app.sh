@@ -38,6 +38,14 @@ if [[ -d "$resource_bundle" ]]; then
   cp -R "$resource_bundle" "$app_bundle/Contents/Resources/"
 fi
 
+packaged_resources="$app_bundle/Contents/Resources/ZenGarden_ZenGarden.bundle"
+for required_resource in Blocked.html ZenGardenHero.png; do
+  if [[ ! -f "$packaged_resources/$required_resource" ]]; then
+    print -u2 "Missing packaged resource: $required_resource"
+    exit 1
+  fi
+done
+
 chmod 755 "$app_bundle/Contents/MacOS/ZenGarden"
 codesign --force --deep --sign - "$app_bundle" >/dev/null
 

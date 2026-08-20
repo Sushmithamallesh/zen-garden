@@ -89,7 +89,7 @@ struct SettingsView: View {
                 }
                 .zenCard()
 
-                Text("Zen Garden · local development build 0.1")
+                Text("Zen Garden · local development build 0.1.1")
                     .font(.system(size: 10, design: .rounded))
                     .foregroundStyle(GardenTheme.softInk.opacity(0.55))
                     .frame(maxWidth: .infinity)

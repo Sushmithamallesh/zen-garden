@@ -203,7 +203,7 @@ final class BrowserBlocker: ObservableObject {
     }
 
     private func blockedPageURL(for domain: String) -> URL? {
-        guard let resource = Bundle.module.url(forResource: "Blocked", withExtension: "html") else {
+        guard let resource = AppResources.url(forResource: "Blocked", withExtension: "html") else {
             return nil
         }
 
