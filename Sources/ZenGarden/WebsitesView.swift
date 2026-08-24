@@ -29,17 +29,18 @@ struct WebsitesView: View {
             }
             .padding(34)
         }
+        .scrollIndicators(.hidden)
     }
 
     private var addWebsiteCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Add a website")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .font(GardenTypography.body(14, weight: .semibold))
 
             HStack(spacing: 10) {
                 TextField("reddit.com", text: $newWebsite)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 15, design: .rounded))
+                    .font(GardenTypography.body(15))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 11)
                     .background(GardenTheme.ink.opacity(0.05))
@@ -52,7 +53,7 @@ struct WebsitesView: View {
 
             if let validationMessage {
                 Text(validationMessage)
-                    .font(.system(size: 11, design: .rounded))
+                    .font(GardenTypography.body(11))
                     .foregroundStyle(GardenTheme.vermilion)
             }
         }
@@ -65,9 +66,9 @@ struct WebsitesView: View {
                 .font(.system(size: 26))
                 .foregroundStyle(GardenTheme.moss)
             Text("No paths are closed")
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .font(GardenTypography.display(17, weight: .medium))
             Text("Add a domain above whenever a website starts pulling at your attention.")
-                .font(.system(size: 12, design: .rounded))
+                .font(GardenTypography.body(12))
                 .foregroundStyle(GardenTheme.softInk.opacity(0.72))
         }
         .frame(maxWidth: .infinity)
@@ -102,9 +103,9 @@ private struct WebsiteRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(website.domain)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(GardenTypography.body(14, weight: .semibold))
                 Text(website.isEnabled ? "Closed during focus" : "Allowed for now")
-                    .font(.system(size: 11, design: .rounded))
+                    .font(GardenTypography.body(11))
                     .foregroundStyle(GardenTheme.softInk.opacity(0.68))
             }
 
@@ -133,11 +134,11 @@ private struct WebsiteRow: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
-        .background(GardenTheme.warmWhite.opacity(0.78))
+        .background(GardenTheme.warmWhite.opacity(0.82))
         .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .stroke(Color.white.opacity(0.6), lineWidth: 1)
+                .stroke(GardenTheme.deepPine.opacity(0.08), lineWidth: 1)
         }
     }
 }

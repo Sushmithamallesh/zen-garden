@@ -20,12 +20,28 @@ struct ZenGardenApp: App {
         }
         .defaultSize(width: 980, height: 680)
 
+        Window("Request a Break", id: "break-request") {
+            BreakRequestWindow()
+                .environmentObject(model)
+        }
+        .windowResizability(.contentSize)
+
         MenuBarExtra {
             MenuBarFocusView()
                 .environmentObject(model)
         } label: {
-            Label("Zen Garden", systemImage: model.settings.focusState().isActive ? "circle.inset.filled" : "circle.dotted")
+            ZenGardenMark(size: 18)
+                .accessibilityLabel("Zen Garden")
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+private struct BreakRequestWindow: View {
+    var body: some View {
+        BreakRequestView(compact: false) {
+            NSApp.keyWindow?.close()
+        }
+        .background(GardenTheme.warmWhite)
     }
 }

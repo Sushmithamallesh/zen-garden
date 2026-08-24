@@ -35,7 +35,7 @@ struct SchedulesView: View {
                             .font(.system(size: 27))
                             .foregroundStyle(GardenTheme.moss)
                         Text("No automatic rhythms yet")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .font(GardenTypography.display(17, weight: .medium))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(45)
@@ -43,6 +43,7 @@ struct SchedulesView: View {
             }
             .padding(34)
         }
+        .scrollIndicators(.hidden)
     }
 }
 
@@ -67,7 +68,7 @@ private struct ScheduleCard: View {
                     )
                 )
                 .textFieldStyle(.plain)
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .font(GardenTypography.display(18, weight: .medium))
 
                 Spacer()
 
@@ -121,7 +122,7 @@ private struct ScheduleCard: View {
                         }
                     } label: {
                         Text(day.0)
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .font(GardenTypography.label(11, weight: .bold))
                             .foregroundStyle(isSelected ? Color.white : GardenTheme.softInk)
                             .frame(width: 29, height: 29)
                             .background(isSelected ? GardenTheme.moss : GardenTheme.ink.opacity(0.055))
@@ -133,12 +134,12 @@ private struct ScheduleCard: View {
                 Spacer()
 
                 Text(schedule.isEnabled ? "Active" : "Paused")
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .font(GardenTypography.label(11, weight: .semibold))
                     .foregroundStyle(schedule.isEnabled ? GardenTheme.moss : GardenTheme.softInk.opacity(0.6))
             }
         }
         .zenCard()
-        .opacity(schedule.isEnabled ? 1 : 0.66)
+        .opacity(schedule.isEnabled ? 1 : 0.82)
     }
 
     private func timeControl(
@@ -148,7 +149,7 @@ private struct ScheduleCard: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(label.uppercased())
-                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .font(GardenTypography.label(9, weight: .bold))
                 .tracking(1.2)
                 .foregroundStyle(GardenTheme.softInk.opacity(0.65))
             DatePicker(

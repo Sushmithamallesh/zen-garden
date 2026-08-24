@@ -89,6 +89,41 @@ struct CoreTests {
             "ends an overnight schedule"
         )
 
+        let beforeFive = calendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 18, hour: 16, minute: 59)
+        )!
+        let atFive = calendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 18, hour: 17)
+        )!
+        expect(
+            DailyFocusPolicy.activeInterval(
+                containing: beforeFive,
+                cutoffMinute: 17 * 60,
+                calendar: calendar
+            ) != nil,
+            "activates the daily boundary before its cutoff"
+        )
+        expect(
+            DailyFocusPolicy.activeInterval(
+                containing: atFive,
+                cutoffMinute: 17 * 60,
+                calendar: calendar
+            ) == nil,
+            "ends the daily boundary at its cutoff"
+        )
+
+        let breakRecord = BreakRecord(
+            domain: "reddit.com",
+            reason: "Reply to a project question",
+            requestedAt: mondayMorning,
+            scheduledEnd: calendar.date(byAdding: .minute, value: 10, to: mondayMorning)!
+        )
+        expect(breakRecord.isActive(at: mondayMorning), "activates a requested break")
+        expect(
+            !breakRecord.isActive(at: calendar.date(byAdding: .minute, value: 10, to: mondayMorning)!),
+            "expires a requested break on time"
+        )
+
         if failures > 0 {
             print("\n\(failures) core test(s) failed.")
             exit(1)

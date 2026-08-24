@@ -4,14 +4,33 @@ import SwiftUI
 enum GardenTheme {
     static let ricePaper = Color(red: 0.96, green: 0.94, blue: 0.88)
     static let warmWhite = Color(red: 0.995, green: 0.985, blue: 0.95)
-    static let ink = Color(red: 0.055, green: 0.14, blue: 0.09)
-    static let softInk = Color(red: 0.18, green: 0.28, blue: 0.21)
+    static let ink = Color(red: 0.16, green: 0.20, blue: 0.07)
+    static let softInk = Color(red: 0.29, green: 0.34, blue: 0.17)
     static let vermilion = Color(red: 0.78, green: 0.12, blue: 0.075)
     static let softRed = Color(red: 0.91, green: 0.37, blue: 0.27)
-    static let moss = Color(red: 0.16, green: 0.38, blue: 0.21)
-    static let leaf = Color(red: 0.32, green: 0.55, blue: 0.28)
-    static let rakeLine = Color(red: 0.78, green: 0.12, blue: 0.075)
-    static let deepPine = Color(red: 0.035, green: 0.20, blue: 0.11)
+    static let matcha = Color(red: 0.43, green: 0.50, blue: 0.20)
+    static let matchaLight = Color(red: 0.67, green: 0.72, blue: 0.40)
+    static let matchaPale = Color(red: 0.86, green: 0.89, blue: 0.70)
+    static let matchaShadow = Color(red: 0.27, green: 0.33, blue: 0.12)
+    static let earthRed = Color(red: 0.64, green: 0.27, blue: 0.18)
+    static let moss = matcha
+    static let leaf = matchaLight
+    static let rakeLine = vermilion
+    static let deepPine = matcha
+}
+
+enum GardenTypography {
+    static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
+        .system(size: size, weight: weight, design: .serif)
+    }
+
+    static func body(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight, design: .default)
+    }
+
+    static func label(_ size: CGFloat, weight: Font.Weight = .medium) -> Font {
+        .system(size: size, weight: weight, design: .rounded)
+    }
 }
 
 struct ZenGardenBackdrop: View {
@@ -65,41 +84,68 @@ private struct GardenFallbackBackdrop: View {
     }
 }
 
-struct ZenStoneMark: View {
+@MainActor
+private enum GardenIconArtwork {
+    static let image: NSImage? = {
+        guard let source = AppResources.image(named: "ZenGardenHero") else { return nil }
+
+        let cropSide = min(source.size.width, source.size.height) * 0.82
+        let sourceRect = NSRect(
+            x: source.size.width - cropSide,
+            y: 0,
+            width: cropSide,
+            height: cropSide
+        )
+        let outputSize = NSSize(width: 512, height: 512)
+        let output = NSImage(size: outputSize)
+        output.lockFocus()
+        NSGraphicsContext.current?.imageInterpolation = .high
+        source.draw(
+            in: NSRect(origin: .zero, size: outputSize),
+            from: sourceRect,
+            operation: .copy,
+            fraction: 1
+        )
+        output.unlockFocus()
+        return output
+    }()
+}
+
+struct ZenGardenMark: View {
     var size: CGFloat = 42
 
     var body: some View {
         ZStack {
-            Circle()
-                .fill(GardenTheme.deepPine)
-            ForEach(0..<3, id: \.self) { index in
-                Circle()
-                    .stroke(GardenTheme.ricePaper.opacity(0.64 - Double(index) * 0.12), lineWidth: 1)
-                    .frame(
-                        width: size * (0.42 + CGFloat(index) * 0.18),
-                        height: size * (0.24 + CGFloat(index) * 0.13)
-                    )
+            if let artwork = GardenIconArtwork.image {
+                Image(nsImage: artwork)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+            } else {
+                GardenTheme.matcha
             }
-            Circle()
-                .fill(GardenTheme.vermilion)
-                .frame(width: size * 0.15, height: size * 0.15)
-                .offset(x: size * 0.19, y: -size * 0.18)
         }
         .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
+                .stroke(GardenTheme.matchaShadow.opacity(0.12), lineWidth: max(0.5, size * 0.018))
+        }
+        .drawingGroup()
     }
 }
 
 struct ZenCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .padding(22)
-            .background(GardenTheme.warmWhite.opacity(0.90))
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .padding(20)
+            .background(GardenTheme.warmWhite.opacity(0.92))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(GardenTheme.deepPine.opacity(0.11), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(GardenTheme.deepPine.opacity(0.09), lineWidth: 1)
             }
-            .shadow(color: GardenTheme.deepPine.opacity(0.09), radius: 18, y: 8)
+            .shadow(color: GardenTheme.deepPine.opacity(0.075), radius: 14, y: 6)
     }
 }
 
@@ -114,7 +160,7 @@ struct VermilionButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: compact ? 13 : 15, weight: .semibold, design: .rounded))
+            .font(GardenTypography.label(compact ? 13 : 15, weight: .semibold))
             .foregroundStyle(Color.white)
             .padding(.horizontal, compact ? 15 : 20)
             .padding(.vertical, compact ? 8 : 11)
@@ -128,7 +174,7 @@ struct VermilionButtonStyle: ButtonStyle {
 struct SoftButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 13, weight: .medium, design: .rounded))
+            .font(GardenTypography.label(13, weight: .medium))
             .foregroundStyle(GardenTheme.softInk)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
@@ -137,30 +183,52 @@ struct SoftButtonStyle: ButtonStyle {
     }
 }
 
+@MainActor
 enum AppIconRenderer {
     static func make() -> NSImage {
         let size = NSSize(width: 256, height: 256)
         let image = NSImage(size: size)
         image.lockFocus()
 
-        NSColor(calibratedRed: 0.035, green: 0.20, blue: 0.11, alpha: 1).setFill()
-        NSBezierPath(roundedRect: NSRect(origin: .zero, size: size), xRadius: 58, yRadius: 58).fill()
+        // Dock icons share the same slot, but their visible artwork is sized optically.
+        // Keeping a transparent 24 pt margin prevents this tile from looking oversized.
+        let tile = NSRect(x: 24, y: 24, width: 208, height: 208)
+        let iconShape = NSBezierPath(roundedRect: tile, xRadius: 50, yRadius: 50)
 
-        NSColor(calibratedRed: 0.96, green: 0.94, blue: 0.88, alpha: 1).setFill()
-        NSBezierPath(ovalIn: NSRect(x: 42, y: 53, width: 172, height: 150)).fill()
+        NSGraphicsContext.saveGraphicsState()
+        let shadow = NSShadow()
+        shadow.shadowColor = NSColor(calibratedWhite: 0.08, alpha: 0.18)
+        shadow.shadowBlurRadius = 9
+        shadow.shadowOffset = NSSize(width: 0, height: -4)
+        shadow.set()
+        NSColor(calibratedRed: 0.995, green: 0.985, blue: 0.95, alpha: 1).setFill()
+        iconShape.fill()
+        NSGraphicsContext.restoreGraphicsState()
 
-        for index in 0..<4 {
-            NSColor(calibratedRed: 0.78, green: 0.12, blue: 0.075, alpha: 0.58 + CGFloat(index) * 0.08).setStroke()
-            let inset = CGFloat(54 + index * 14)
-            let path = NSBezierPath(ovalIn: NSRect(x: inset, y: 84 - CGFloat(index * 2), width: 256 - inset * 2, height: 86 + CGFloat(index * 4)))
-            path.lineWidth = 3
-            path.stroke()
+        NSGraphicsContext.saveGraphicsState()
+        iconShape.addClip()
+
+        if let artwork = GardenIconArtwork.image {
+            NSGraphicsContext.current?.imageInterpolation = .high
+            artwork.draw(
+                in: tile,
+                from: NSRect(origin: .zero, size: artwork.size),
+                operation: .copy,
+                fraction: 1
+            )
+        } else {
+            NSColor(calibratedRed: 0.43, green: 0.50, blue: 0.20, alpha: 1).setFill()
+            iconShape.fill()
         }
 
-        NSColor(calibratedRed: 0.78, green: 0.12, blue: 0.075, alpha: 1).setFill()
-        NSBezierPath(ovalIn: NSRect(x: 116, y: 116, width: 24, height: 24)).fill()
+        NSGraphicsContext.restoreGraphicsState()
+
+        NSColor(calibratedRed: 0.27, green: 0.33, blue: 0.12, alpha: 0.14).setStroke()
+        iconShape.lineWidth = 1.5
+        iconShape.stroke()
 
         image.unlockFocus()
         return image
     }
+
 }

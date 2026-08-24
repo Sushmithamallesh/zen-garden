@@ -171,6 +171,12 @@ final class BrowserBlocker: ObservableObject {
               let match = DomainMatcher.firstMatch(urlString: urlString, in: settings.websites)
         else { return }
 
+        if settings.isDomainTemporarilyAllowed(match.domain) {
+            statusText = "A deliberate break is open"
+            detailText = "(match.domain) will close again automatically."
+            return
+        }
+
         if let lastRedirect,
            lastRedirect.domain == match.domain,
            Date().timeIntervalSince(lastRedirect.date) < 1.5 {

@@ -7,7 +7,12 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var schedules: [FocusSchedule]
     @Published private(set) var manualSessionStartedAt: Date?
     @Published private(set) var manualSessionEndsAt: Date?
-    @Published private(set) var pausedUntil: Date?
+    @Published private(set) var breakRecords: [BreakRecord]
+    @Published private(set) var dailyFocusEnabled: Bool
+    @Published private(set) var dailyCutoffMinute: Int
+    @Published private(set) var digestEnabled: Bool
+    @Published private(set) var digestEmail: String
+    @Published private(set) var lastDigestDay: String?
 
     private let defaults: UserDefaults
     private let encoder = JSONEncoder()
@@ -18,7 +23,13 @@ final class SettingsStore: ObservableObject {
         static let schedules = "zenGarden.schedules.v1"
         static let manualSessionStartedAt = "zenGarden.manualSessionStartedAt.v1"
         static let manualSessionEndsAt = "zenGarden.manualSessionEndsAt.v1"
-        static let pausedUntil = "zenGarden.pausedUntil.v1"
+        static let legacyPausedUntil = "zenGarden.pausedUntil.v1"
+        static let breakRecords = "zenGarden.breakRecords.v1"
+        static let dailyFocusEnabled = "zenGarden.dailyFocusEnabled.v1"
+        static let dailyCutoffMinute = "zenGarden.dailyCutoffMinute.v1"
+        static let digestEnabled = "zenGarden.digestEnabled.v1"
+        static let digestEmail = "zenGarden.digestEmail.v1"
+        static let lastDigestDay = "zenGarden.lastDigestDay.v1"
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -44,16 +55,36 @@ final class SettingsStore: ObservableObject {
             schedules = [.workday]
         }
 
+        if let data = defaults.data(forKey: Key.breakRecords),
+           let decoded = try? decoder.decode([BreakRecord].self, from: data) {
+            breakRecords = decoded
+        } else {
+            breakRecords = []
+        }
+
         manualSessionStartedAt = defaults.object(forKey: Key.manualSessionStartedAt) as? Date
         manualSessionEndsAt = defaults.object(forKey: Key.manualSessionEndsAt) as? Date
-        pausedUntil = defaults.object(forKey: Key.pausedUntil) as? Date
+        dailyFocusEnabled = defaults.object(forKey: Key.dailyFocusEnabled) as? Bool ?? true
+        dailyCutoffMinute = defaults.object(forKey: Key.dailyCutoffMinute) as? Int
+            ?? DailyFocusPolicy.defaultCutoffMinute
+        digestEnabled = defaults.object(forKey: Key.digestEnabled) as? Bool ?? true
+        digestEmail = defaults.string(forKey: Key.digestEmail) ?? ""
+        lastDigestDay = defaults.string(forKey: Key.lastDigestDay)
 
-        clearExpiredState(at: Date())
+        // Version one allowed an unaccounted global pause. It is intentionally
+        // retired now that every exception requires a reason.
+        defaults.removeObject(forKey: Key.legacyPausedUntil)
+        performMaintenance(at: Date())
     }
 
     func focusState(at date: Date = Date(), calendar: Calendar = .current) -> FocusState {
-        if let pause = pausedUntil, pause > date {
-            return .inactive
+        if dailyFocusEnabled,
+           let daily = DailyFocusPolicy.activeInterval(
+               containing: date,
+               cutoffMinute: dailyCutoffMinute,
+               calendar: calendar
+           ) {
+            return FocusState(isActive: true, source: .daily, endsAt: daily.end)
         }
 
         if let manualEnd = manualSessionEndsAt, manualEnd > date {
@@ -80,7 +111,6 @@ final class SettingsStore: ObservableObject {
         let safeMinutes = min(max(minutes, 1), 12 * 60)
         manualSessionStartedAt = now
         manualSessionEndsAt = Calendar.current.date(byAdding: .minute, value: safeMinutes, to: now)
-        pausedUntil = nil
         persistSession()
     }
 
@@ -90,15 +120,99 @@ final class SettingsStore: ObservableObject {
         persistSession()
     }
 
-    func pause(minutes: Int, now: Date = Date()) {
-        pausedUntil = Calendar.current.date(byAdding: .minute, value: max(1, minutes), to: now)
-        endManualSession()
-        persistSession()
+    @discardableResult
+    func requestBreak(
+        domain input: String,
+        reason: String,
+        minutes: Int,
+        now: Date = Date()
+    ) -> Bool {
+        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedReason.isEmpty,
+              let domain = DomainMatcher.normalizedDomain(from: input),
+              websites.contains(where: { $0.isEnabled && $0.domain == domain }),
+              let end = Calendar.current.date(
+                  byAdding: .minute,
+                  value: min(max(minutes, 1), 120),
+                  to: now
+              )
+        else { return false }
+
+        breakRecords.append(
+            BreakRecord(
+                domain: domain,
+                reason: trimmedReason,
+                requestedAt: now,
+                scheduledEnd: end
+            )
+        )
+        breakRecords.sort { $0.requestedAt > $1.requestedAt }
+        persistBreakRecords()
+        return true
     }
 
-    func resume() {
-        pausedUntil = nil
-        persistSession()
+    func isDomainTemporarilyAllowed(_ domain: String, at date: Date = Date()) -> Bool {
+        guard let normalized = DomainMatcher.normalizedDomain(from: domain) else { return false }
+        return breakRecords.contains { record in
+            record.domain == normalized && record.isActive(at: date)
+        }
+    }
+
+    func activeBreaks(at date: Date = Date()) -> [BreakRecord] {
+        breakRecords.filter { $0.isActive(at: date) }
+    }
+
+    func endAllBreaks(at date: Date = Date()) {
+        var changed = false
+        for index in breakRecords.indices where breakRecords[index].isActive(at: date) {
+            breakRecords[index].endedAt = date
+            changed = true
+        }
+        if changed { persistBreakRecords() }
+    }
+
+    func breakRecords(on date: Date, calendar: Calendar = .current) -> [BreakRecord] {
+        let interval = calendar.dateInterval(of: .day, for: date)
+        return breakRecords
+            .filter { record in
+                guard let interval else { return false }
+                return interval.contains(record.requestedAt)
+            }
+            .sorted { $0.requestedAt < $1.requestedAt }
+    }
+
+    func setDailyFocusEnabled(_ enabled: Bool) {
+        dailyFocusEnabled = enabled
+        defaults.set(enabled, forKey: Key.dailyFocusEnabled)
+    }
+
+    func setDailyCutoffMinute(_ minute: Int) {
+        dailyCutoffMinute = min(max(minute, 1), (24 * 60) - 1)
+        defaults.set(dailyCutoffMinute, forKey: Key.dailyCutoffMinute)
+    }
+
+    func setDigestEnabled(_ enabled: Bool) {
+        digestEnabled = enabled
+        defaults.set(enabled, forKey: Key.digestEnabled)
+    }
+
+    func setDigestEmail(_ email: String) {
+        digestEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        defaults.set(digestEmail, forKey: Key.digestEmail)
+    }
+
+    func markDigestSent(for date: Date, calendar: Calendar = .current) {
+        lastDigestDay = Self.dayKey(for: date, calendar: calendar)
+        defaults.set(lastDigestDay, forKey: Key.lastDigestDay)
+    }
+
+    func digestWasSent(for date: Date, calendar: Calendar = .current) -> Bool {
+        lastDigestDay == Self.dayKey(for: date, calendar: calendar)
+    }
+
+    func dailyCutoff(on date: Date, calendar: Calendar = .current) -> Date? {
+        let dayStart = calendar.startOfDay(for: date)
+        return calendar.date(byAdding: .minute, value: dailyCutoffMinute, to: dayStart)
     }
 
     @discardableResult
@@ -148,15 +262,29 @@ final class SettingsStore: ObservableObject {
         persistSchedules()
     }
 
-    private func clearExpiredState(at date: Date) {
+    func performMaintenance(at date: Date) {
         if let manualEnd = manualSessionEndsAt, manualEnd <= date {
             manualSessionStartedAt = nil
             manualSessionEndsAt = nil
+            persistSession()
         }
-        if let pause = pausedUntil, pause <= date {
-            pausedUntil = nil
+
+        let retentionDate = Calendar.current.date(byAdding: .day, value: -90, to: date) ?? .distantPast
+        let retained = breakRecords.filter { $0.requestedAt >= retentionDate }
+        if retained.count != breakRecords.count {
+            breakRecords = retained
+            persistBreakRecords()
         }
-        persistSession()
+    }
+
+    private static func dayKey(for date: Date, calendar: Calendar) -> String {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(
+            format: "%04d-%02d-%02d",
+            components.year ?? 0,
+            components.month ?? 0,
+            components.day ?? 0
+        )
     }
 
     private func persistWebsites() {
@@ -170,6 +298,9 @@ final class SettingsStore: ObservableObject {
     private func persistSession() {
         defaults.set(manualSessionStartedAt, forKey: Key.manualSessionStartedAt)
         defaults.set(manualSessionEndsAt, forKey: Key.manualSessionEndsAt)
-        defaults.set(pausedUntil, forKey: Key.pausedUntil)
+    }
+
+    private func persistBreakRecords() {
+        defaults.set(try? encoder.encode(breakRecords), forKey: Key.breakRecords)
     }
 }

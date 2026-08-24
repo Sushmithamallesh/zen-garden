@@ -71,6 +71,7 @@ struct FocusSchedule: Identifiable, Codable, Equatable, Sendable {
 
 enum FocusSource: Equatable, Sendable {
     case manual
+    case daily
     case schedule(String)
 }
 
@@ -80,6 +81,41 @@ struct FocusState: Equatable, Sendable {
     var endsAt: Date?
 
     static let inactive = FocusState(isActive: false, source: nil, endsAt: nil)
+}
+
+struct BreakRecord: Identifiable, Codable, Equatable, Sendable {
+    var id: UUID = UUID()
+    var domain: String
+    var reason: String
+    var requestedAt: Date
+    var scheduledEnd: Date
+    var endedAt: Date?
+
+    func isActive(at date: Date) -> Bool {
+        requestedAt <= date && (endedAt ?? scheduledEnd) > date
+    }
+
+    func activeDuration(until date: Date = Date()) -> TimeInterval {
+        max(0, min(endedAt ?? date, scheduledEnd).timeIntervalSince(requestedAt))
+    }
+}
+
+enum DailyFocusPolicy {
+    static let defaultCutoffMinute = 17 * 60
+
+    static func activeInterval(
+        containing date: Date,
+        cutoffMinute: Int,
+        calendar: Calendar = .current
+    ) -> DateInterval? {
+        let safeCutoff = min(max(cutoffMinute, 1), (24 * 60) - 1)
+        let dayStart = calendar.startOfDay(for: date)
+        guard let cutoff = calendar.date(byAdding: .minute, value: safeCutoff, to: dayStart),
+              date < cutoff
+        else { return nil }
+
+        return DateInterval(start: dayStart, end: cutoff)
+    }
 }
 
 enum DomainMatcher {

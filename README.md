@@ -4,6 +4,10 @@ Zen Garden is a local-first macOS website blocker with a quiet Japandi-inspired 
 
 ## What is included
 
+- An automatic daily boundary that blocks selected sites until 5:00 PM
+- Reason-required, site-specific breaks that close again automatically
+- A daily Apple Mail reflection containing every break reason
+- First-class menu-bar controls and Raycast script commands
 - 25, 50, and 90-minute focus sessions
 - Weekly schedules, including overnight schedules
 - Editable website blocklist with subdomain matching
@@ -47,6 +51,21 @@ If a crash report stops in `_RegisterApplication` and names `codex` as the paren
 When focus is active and you first open a blocked site, macOS asks whether Zen Garden may control the active browser. Choose **Allow**. You can review or change this later at:
 
 **System Settings → Privacy & Security → Automation**
+
+Zen Garden uses the same Automation permission to send the optional daily
+reflection through Apple Mail. Add the recipient in Settings, keep Mail signed
+in, and choose **Allow** when macOS asks. If the Mac is asleep at the cutoff,
+the pending reflection is sent after the Mac wakes.
+
+## Raycast
+
+The `raycast` folder contains three Script Commands: **Request a Break**,
+**Resume Blocking**, and **Open Zen Garden**.
+
+In Raycast, open **Settings → Extensions → Add Directories** and select the
+repository's `raycast` folder. The commands then appear in Raycast search. The
+break command opens Zen Garden's small reason form directly; it does not open
+the full settings window.
 
 If you rebuild the app and macOS no longer presents the permission correctly, remove the old Automation permission and launch the new build again.
 

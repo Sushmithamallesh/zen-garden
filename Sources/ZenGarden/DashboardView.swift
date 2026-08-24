@@ -4,6 +4,7 @@ import SwiftUI
 struct DashboardView: View {
     @EnvironmentObject private var model: AppModel
     @State private var selectedMinutes = 50
+    @State private var showingBreakRequest = false
 
     private let durations = [25, 50, 90]
 
@@ -30,6 +31,7 @@ struct DashboardView: View {
                 }
                 .padding(34)
             }
+            .scrollIndicators(.hidden)
         }
     }
 
@@ -38,20 +40,20 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 7) {
                     Text(state.isActive ? "FOCUS IN PROGRESS" : "BEGIN A SESSION")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .font(GardenTypography.label(10, weight: .bold))
                         .tracking(1.6)
                         .foregroundStyle(state.isActive ? GardenTheme.moss : GardenTheme.vermilion)
 
                     if state.isActive {
                         Text(remainingText(until: state.endsAt, now: now))
-                            .font(.system(size: 43, weight: .medium, design: .rounded))
+                            .font(GardenTypography.label(43, weight: .medium))
                             .monospacedDigit()
                         Text(sourceText(state.source))
-                            .font(.system(size: 13, design: .rounded))
+                            .font(GardenTypography.body(13))
                             .foregroundStyle(GardenTheme.softInk.opacity(0.78))
                     } else {
                         Text("How long would you like to settle in?")
-                            .font(.system(size: 21, weight: .medium, design: .rounded))
+                            .font(GardenTypography.display(22, weight: .medium))
                     }
                 }
 
@@ -64,10 +66,17 @@ struct DashboardView: View {
                             .buttonStyle(SoftButtonStyle())
                         }
 
-                        Button("Pause for 10 minutes") {
-                            model.settings.pause(minutes: 10)
+                        Button("Request a break…") {
+                            showingBreakRequest = true
                         }
                         .buttonStyle(SoftButtonStyle())
+
+                        if !model.settings.activeBreaks(at: now).isEmpty {
+                            Button("Resume blocking") {
+                                model.settings.endAllBreaks(at: now)
+                            }
+                            .buttonStyle(SoftButtonStyle())
+                        }
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 15) {
@@ -77,7 +86,7 @@ struct DashboardView: View {
                                     selectedMinutes = minutes
                                 } label: {
                                     Text("\(minutes) min")
-                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                        .font(GardenTypography.label(13, weight: .semibold))
                                         .foregroundStyle(selectedMinutes == minutes ? Color.white : GardenTheme.softInk)
                                         .padding(.horizontal, 15)
                                         .padding(.vertical, 8)
@@ -98,11 +107,18 @@ struct DashboardView: View {
 
             Spacer(minLength: 10)
 
-            ZenFocusRing(state: state, now: now)
-                .frame(width: 190, height: 190)
+            ZenFocusRing(state: state)
+                .frame(width: 178, height: 178)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .zenCard()
+        .sheet(isPresented: $showingBreakRequest) {
+            BreakRequestView(compact: false) {
+                showingBreakRequest = false
+            }
+            .environmentObject(model)
+            .background(GardenTheme.warmWhite)
+        }
     }
 
     private var browserCard: some View {
@@ -111,12 +127,12 @@ struct DashboardView: View {
                 Image(systemName: "safari")
                     .foregroundStyle(GardenTheme.vermilion)
                 Text(model.browserBlocker.statusText)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(GardenTypography.body(14, weight: .semibold))
                 Spacer()
             }
 
             Text(model.browserBlocker.detailText)
-                .font(.system(size: 13, design: .rounded))
+                .font(GardenTypography.body(13))
                 .foregroundStyle(GardenTheme.softInk.opacity(0.76))
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -137,12 +153,12 @@ struct DashboardView: View {
                 Image(systemName: "leaf")
                     .foregroundStyle(GardenTheme.moss)
                 Text("A gentle boundary")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(GardenTypography.body(14, weight: .semibold))
                 Spacer()
             }
 
-            Text("Blocking begins only during a session or enabled schedule. Everything remains on your Mac.")
-                .font(.system(size: 13, design: .rounded))
+            Text("Your daily boundary closes distracting websites until the chosen cutoff. Every exception has a reason and stays on your Mac until the daily reflection is sent.")
+                .font(GardenTypography.body(13))
                 .foregroundStyle(GardenTheme.softInk.opacity(0.76))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -165,6 +181,8 @@ struct DashboardView: View {
         switch source {
         case .manual:
             "A session you chose"
+        case .daily:
+            "Your daily boundary"
         case .schedule(let name):
             "Schedule · \(name)"
         case nil:
@@ -175,29 +193,11 @@ struct DashboardView: View {
 
 struct ZenFocusRing: View {
     let state: FocusState
-    let now: Date
 
     var body: some View {
-        ZStack {
-            ForEach(0..<5, id: \.self) { index in
-                Ellipse()
-                    .stroke(GardenTheme.rakeLine.opacity(0.16 + Double(index) * 0.025), lineWidth: 1)
-                    .frame(
-                        width: 176 - CGFloat(index * 24),
-                        height: 112 - CGFloat(index * 13)
-                    )
-                    .rotationEffect(.degrees(Double(index - 2) * 5))
-            }
-
-            Circle()
-                .fill(state.isActive ? GardenTheme.moss : GardenTheme.vermilion)
-                .frame(width: 62, height: 62)
-                .shadow(color: GardenTheme.ink.opacity(0.13), radius: 12, y: 7)
-
-            Image(systemName: state.isActive ? "leaf.fill" : "circle.dotted")
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.9))
-        }
+        ZenGardenMark(size: 164)
+            .opacity(state.isActive ? 1 : 0.90)
+            .shadow(color: GardenTheme.ink.opacity(0.10), radius: 14, y: 7)
         .accessibilityLabel(state.isActive ? "Focus active" : "Focus inactive")
     }
 }
@@ -205,41 +205,74 @@ struct ZenFocusRing: View {
 struct MenuBarFocusView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.openWindow) private var openWindow
+    @State private var requestingBreak = false
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let state = model.settings.focusState(at: context.date)
 
-            VStack(alignment: .leading, spacing: 15) {
+            VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 11) {
-                    ZenStoneMark(size: 34)
+                    ZenGardenMark(size: 34)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(state.isActive ? "Zen Garden is holding focus" : "Zen Garden is resting")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .font(GardenTypography.body(14, weight: .semibold))
                         Text(model.browserBlocker.statusText)
-                            .font(.system(size: 11, design: .rounded))
+                            .font(GardenTypography.body(11))
                             .foregroundStyle(.secondary)
                     }
                 }
 
                 Divider()
 
-                if state.isActive {
-                    Text(menuRemaining(until: state.endsAt, now: context.date))
-                        .font(.system(size: 27, weight: .medium, design: .rounded))
-                        .monospacedDigit()
-
-                    HStack {
-                        if state.source == .manual {
-                            Button("End") { model.settings.endManualSession() }
-                        }
-                        Button("Pause 10 min") { model.settings.pause(minutes: 10) }
+                if requestingBreak {
+                    BreakRequestView(compact: true) {
+                        requestingBreak = false
                     }
+                    .environmentObject(model)
                 } else {
-                    HStack {
-                        Button("25 min") { model.settings.startSession(minutes: 25) }
-                        Button("50 min") { model.settings.startSession(minutes: 50) }
-                        Button("90 min") { model.settings.startSession(minutes: 90) }
+                    if state.isActive {
+                        Text(statusTitle(state: state, until: state.endsAt))
+                            .font(GardenTypography.display(20, weight: .semibold))
+
+                        let activeBreaks = model.settings.activeBreaks(at: context.date)
+                        let today = model.settings.breakRecords(on: context.date)
+
+                        if !activeBreaks.isEmpty {
+                            VStack(alignment: .leading, spacing: 5) {
+                                ForEach(activeBreaks) { record in
+                                    HStack {
+                                        Circle()
+                                            .fill(GardenTheme.vermilion)
+                                            .frame(width: 6, height: 6)
+                                        Text("\(record.domain) · \(menuRemaining(until: record.scheduledEnd, now: context.date))")
+                                            .font(GardenTypography.body(11, weight: .medium))
+                                    }
+                                }
+                            }
+                        }
+
+                        HStack(spacing: 9) {
+                            Button("Request a break…") { requestingBreak = true }
+                                .buttonStyle(VermilionButtonStyle(compact: true))
+
+                            if !activeBreaks.isEmpty {
+                                Button("Resume now") {
+                                    model.settings.endAllBreaks(at: context.date)
+                                }
+                                .buttonStyle(SoftButtonStyle())
+                            }
+                        }
+
+                        Text(todaySummary(today))
+                            .font(GardenTypography.body(11))
+                            .foregroundStyle(GardenTheme.softInk.opacity(0.68))
+                    } else {
+                        HStack {
+                            Button("25 min") { model.settings.startSession(minutes: 25) }
+                            Button("50 min") { model.settings.startSession(minutes: 50) }
+                            Button("90 min") { model.settings.startSession(minutes: 90) }
+                        }
                     }
                 }
 
@@ -255,13 +288,29 @@ struct MenuBarFocusView: View {
                 }
             }
             .padding(16)
-            .frame(width: 290)
+            .frame(width: 320)
         }
     }
 
     private func menuRemaining(until endDate: Date?, now: Date) -> String {
         guard let endDate else { return "Focus active" }
         let total = max(0, Int(endDate.timeIntervalSince(now)))
-        return String(format: "%02d:%02d remaining", total / 60, total % 60)
+        let minutes = max(1, Int(ceil(Double(total) / 60)))
+        return "\(minutes) min remaining"
+    }
+
+    private func statusTitle(state: FocusState, until endDate: Date?) -> String {
+        if state.source == .daily, let endDate {
+            return "Blocking until \(endDate.formatted(date: .omitted, time: .shortened))"
+        }
+        return menuRemaining(until: endDate, now: Date())
+    }
+
+    private func todaySummary(_ records: [BreakRecord]) -> String {
+        let minutes = records.reduce(0) { result, record in
+            result + max(1, Int(record.scheduledEnd.timeIntervalSince(record.requestedAt) / 60))
+        }
+        let noun = records.count == 1 ? "break" : "breaks"
+        return "Today · \(records.count) \(noun) · \(minutes) min requested"
     }
 }
