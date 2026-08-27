@@ -15,7 +15,7 @@ struct FocusSchedule: Identifiable, Codable, Equatable, Sendable {
     var isEnabled: Bool = true
 
     static let workday = FocusSchedule(
-        name: "Quiet work",
+        name: "Work hours",
         startMinute: 9 * 60,
         endMinute: 17 * 60,
         weekdays: [2, 3, 4, 5, 6],
@@ -101,20 +101,61 @@ struct BreakRecord: Identifiable, Codable, Equatable, Sendable {
 }
 
 enum DailyFocusPolicy {
+    static let defaultStartMinute = 7 * 60
     static let defaultCutoffMinute = 17 * 60
 
     static func activeInterval(
         containing date: Date,
+        startMinute: Int,
         cutoffMinute: Int,
         calendar: Calendar = .current
     ) -> DateInterval? {
-        let safeCutoff = min(max(cutoffMinute, 1), (24 * 60) - 1)
-        let dayStart = calendar.startOfDay(for: date)
-        guard let cutoff = calendar.date(byAdding: .minute, value: safeCutoff, to: dayStart),
-              date < cutoff
-        else { return nil }
+        let safeStart = min(max(startMinute, 0), (24 * 60) - 1)
+        let safeCutoff = min(max(cutoffMinute, 0), (24 * 60) - 1)
+        guard safeStart != safeCutoff else { return nil }
 
-        return DateInterval(start: dayStart, end: cutoff)
+        let dayStart = calendar.startOfDay(for: date)
+        let minuteOfDay = calendar.dateComponents([.hour, .minute], from: date)
+        let currentMinute = (minuteOfDay.hour ?? 0) * 60 + (minuteOfDay.minute ?? 0)
+
+        if safeStart < safeCutoff {
+            guard currentMinute >= safeStart,
+                  currentMinute < safeCutoff,
+                  let start = calendar.date(byAdding: .minute, value: safeStart, to: dayStart),
+                  let cutoff = calendar.date(byAdding: .minute, value: safeCutoff, to: dayStart)
+            else { return nil }
+
+            return DateInterval(start: start, end: cutoff)
+        }
+
+        if currentMinute >= safeStart,
+           let start = calendar.date(byAdding: .minute, value: safeStart, to: dayStart),
+           let nextDay = calendar.date(byAdding: .day, value: 1, to: dayStart),
+           let cutoff = calendar.date(byAdding: .minute, value: safeCutoff, to: nextDay) {
+            return DateInterval(start: start, end: cutoff)
+        }
+
+        if currentMinute < safeCutoff,
+           let previousDay = calendar.date(byAdding: .day, value: -1, to: dayStart),
+           let start = calendar.date(byAdding: .minute, value: safeStart, to: previousDay),
+           let cutoff = calendar.date(byAdding: .minute, value: safeCutoff, to: dayStart) {
+            return DateInterval(start: start, end: cutoff)
+        }
+
+        return nil
+    }
+}
+
+enum BlockPageDestination {
+    static func inlineURL(html: String, domain: String) -> URL? {
+        let encodedPage = Data(html.utf8).base64EncodedString()
+        let encodedDomain = domain.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
+            ?? domain
+        return URL(string: "data:text/html;charset=utf-8;base64,\(encodedPage)#\(encodedDomain)")
+    }
+
+    static func fallbackURL(domain: String) -> URL? {
+        URL(string: "about:blank#zen-garden-\(domain)")
     }
 }
 

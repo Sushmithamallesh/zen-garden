@@ -18,3 +18,13 @@ swiftc \
   -o "$project_root/.build/zen-garden-core-tests"
 
 "$project_root/.build/zen-garden-core-tests"
+
+swiftc \
+  -sdk "$sdk_path" \
+  -module-cache-path "$project_root/.build/module-cache" \
+  "$project_root/Sources/ZenGarden/Models.swift" \
+  "$project_root/Sources/ZenGarden/SettingsStore.swift" \
+  "$project_root/scripts/StoreTests.swift" \
+  -o "$project_root/.build/zen-garden-store-tests"
+
+"$project_root/.build/zen-garden-store-tests"

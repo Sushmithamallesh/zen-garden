@@ -89,6 +89,12 @@ struct CoreTests {
             "ends an overnight schedule"
         )
 
+        let beforeSeven = calendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 18, hour: 6, minute: 59)
+        )!
+        let atSeven = calendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 18, hour: 7)
+        )!
         let beforeFive = calendar.date(
             from: DateComponents(year: 2026, month: 8, day: 18, hour: 16, minute: 59)
         )!
@@ -97,7 +103,26 @@ struct CoreTests {
         )!
         expect(
             DailyFocusPolicy.activeInterval(
+                containing: beforeSeven,
+                startMinute: 7 * 60,
+                cutoffMinute: 17 * 60,
+                calendar: calendar
+            ) == nil,
+            "keeps the daily schedule off before its start"
+        )
+        expect(
+            DailyFocusPolicy.activeInterval(
+                containing: atSeven,
+                startMinute: 7 * 60,
+                cutoffMinute: 17 * 60,
+                calendar: calendar
+            ) != nil,
+            "starts the daily schedule at 7 AM"
+        )
+        expect(
+            DailyFocusPolicy.activeInterval(
                 containing: beforeFive,
+                startMinute: 7 * 60,
                 cutoffMinute: 17 * 60,
                 calendar: calendar
             ) != nil,
@@ -106,6 +131,7 @@ struct CoreTests {
         expect(
             DailyFocusPolicy.activeInterval(
                 containing: atFive,
+                startMinute: 7 * 60,
                 cutoffMinute: 17 * 60,
                 calendar: calendar
             ) == nil,
@@ -122,6 +148,20 @@ struct CoreTests {
         expect(
             !breakRecord.isActive(at: calendar.date(byAdding: .minute, value: 10, to: mondayMorning)!),
             "expires a requested break on time"
+        )
+
+        let inlinePage = BlockPageDestination.inlineURL(
+            html: "<html><body>Return to focus.</body></html>",
+            domain: "instagram.com"
+        )
+        expect(
+            inlinePage?.scheme == "data" && inlinePage?.fragment == "instagram.com",
+            "builds a self-contained Chromium focus page"
+        )
+        expect(
+            BlockPageDestination.fallbackURL(domain: "instagram.com")?.absoluteString
+                == "about:blank#zen-garden-instagram.com",
+            "builds a browser-safe fallback destination"
         )
 
         if failures > 0 {

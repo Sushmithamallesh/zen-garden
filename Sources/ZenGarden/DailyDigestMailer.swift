@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 enum DailyDigestMailError: LocalizedError {
@@ -30,22 +31,14 @@ actor DailyDigestMailer {
         end tell
         """
 
-        let process = Process()
-        let standardInput = Pipe()
-        let standardError = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = ["-"]
-        process.standardInput = standardInput
-        process.standardError = standardError
+        var errorInfo: NSDictionary?
+        guard let mailScript = NSAppleScript(source: script) else {
+            throw DailyDigestMailError.scriptFailed("Zen Garden could not prepare the Mail message.")
+        }
+        mailScript.executeAndReturnError(&errorInfo)
 
-        try process.run()
-        standardInput.fileHandleForWriting.write(Data(script.utf8))
-        try? standardInput.fileHandleForWriting.close()
-        process.waitUntilExit()
-
-        guard process.terminationStatus == 0 else {
-            let data = standardError.fileHandleForReading.readDataToEndOfFile()
-            let message = String(decoding: data, as: UTF8.self)
+        if let errorInfo {
+            let message = (errorInfo[NSAppleScript.errorMessage] as? String ?? "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             throw DailyDigestMailError.scriptFailed(message)
         }

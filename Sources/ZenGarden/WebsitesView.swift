@@ -1,54 +1,45 @@
 import SwiftUI
 
-struct WebsitesView: View {
+struct BlockedWebsiteList: View {
     @EnvironmentObject private var model: AppModel
     @State private var newWebsite = ""
     @State private var validationMessage: String?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 25) {
-                PageHeader(
-                    eyebrow: "Boundaries",
-                    title: "Distracting paths",
-                    subtitle: "These domains will close while focus is active. Subdomains are included automatically."
-                )
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Blocked websites")
+                    .font(GardenTypography.display(18, weight: .semibold))
 
-                addWebsiteCard
+                Spacer()
 
-                VStack(spacing: 10) {
-                    ForEach(model.settings.websites) { website in
-                        WebsiteRow(website: website)
-                            .environmentObject(model)
-                    }
-                }
-
-                if model.settings.websites.isEmpty {
-                    emptyState
-                }
+                let activeCount = model.settings.websites.filter(\.isEnabled).count
+                Text("\(activeCount) active")
+                    .font(GardenTypography.label(10, weight: .semibold))
+                    .foregroundStyle(GardenTheme.moss)
             }
-            .padding(34)
-        }
-        .scrollIndicators(.hidden)
-    }
 
-    private var addWebsiteCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Add a website")
-                .font(GardenTypography.body(14, weight: .semibold))
-
-            HStack(spacing: 10) {
-                TextField("reddit.com", text: $newWebsite)
+            HStack(spacing: 9) {
+                TextField("Add a website, e.g. reddit.com", text: $newWebsite)
                     .textFieldStyle(.plain)
-                    .font(GardenTypography.body(15))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 11)
-                    .background(GardenTheme.ink.opacity(0.05))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .font(GardenTypography.body(14))
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 7)
+                    .background(GardenTheme.ink.opacity(0.045))
+                    .foregroundStyle(GardenTheme.ink)
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                     .onSubmit(addWebsite)
 
-                Button("Add", action: addWebsite)
-                    .buttonStyle(VermilionButtonStyle(compact: true))
+                Button(action: addWebsite) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 30, height: 30)
+                        .background(GardenTheme.vermilion)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help("Add website")
             }
 
             if let validationMessage {
@@ -56,23 +47,33 @@ struct WebsitesView: View {
                     .font(GardenTypography.body(11))
                     .foregroundStyle(GardenTheme.vermilion)
             }
-        }
-        .zenCard()
-    }
 
-    private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "leaf")
-                .font(.system(size: 26))
-                .foregroundStyle(GardenTheme.moss)
-            Text("No paths are closed")
-                .font(GardenTypography.display(17, weight: .medium))
-            Text("Add a domain above whenever a website starts pulling at your attention.")
-                .font(GardenTypography.body(12))
-                .foregroundStyle(GardenTheme.softInk.opacity(0.72))
+            if model.settings.websites.isEmpty {
+                Text("Nothing is blocked yet.")
+                    .font(GardenTypography.body(13))
+                    .foregroundStyle(GardenTheme.softInk.opacity(0.62))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(model.settings.websites.enumerated()), id: \.element.id) { index, website in
+                        WebsiteRow(website: website)
+
+                        if index < model.settings.websites.count - 1 {
+                            Divider()
+                                .overlay(GardenTheme.deepPine.opacity(0.07))
+                        }
+                    }
+                }
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(40)
+        .padding(16)
+        .background(GardenTheme.warmWhite.opacity(0.92))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(GardenTheme.deepPine.opacity(0.09), lineWidth: 1)
+        }
     }
 
     private func addWebsite() {
@@ -82,7 +83,7 @@ struct WebsitesView: View {
             newWebsite = ""
             validationMessage = nil
         } else {
-            validationMessage = "Enter a valid domain that is not already in the garden."
+            validationMessage = "Enter a valid website that is not already in the list."
         }
     }
 }
@@ -92,53 +93,39 @@ private struct WebsiteRow: View {
     let website: BlockedWebsite
 
     var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(website.isEnabled ? GardenTheme.moss.opacity(0.12) : GardenTheme.ink.opacity(0.05))
-                Image(systemName: website.isEnabled ? "leaf.fill" : "leaf")
-                    .foregroundStyle(website.isEnabled ? GardenTheme.moss : GardenTheme.softInk.opacity(0.55))
-            }
-            .frame(width: 38, height: 38)
+        HStack(spacing: 12) {
+            Circle()
+                .fill(website.isEnabled ? GardenTheme.moss : GardenTheme.softInk.opacity(0.24))
+                .frame(width: 7, height: 7)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(website.domain)
-                    .font(GardenTypography.body(14, weight: .semibold))
-                Text(website.isEnabled ? "Closed during focus" : "Allowed for now")
-                    .font(GardenTypography.body(11))
-                    .foregroundStyle(GardenTheme.softInk.opacity(0.68))
-            }
+            Text(website.domain)
+                .font(GardenTypography.body(14, weight: .medium))
+                .foregroundStyle(website.isEnabled ? GardenTheme.ink : GardenTheme.softInk.opacity(0.62))
 
             Spacer()
 
-            Toggle(
-                "",
-                isOn: Binding(
-                    get: { website.isEnabled },
-                    set: { model.settings.setWebsiteEnabled(id: website.id, isEnabled: $0) }
-                )
-            )
-            .labelsHidden()
-            .toggleStyle(.switch)
-            .tint(GardenTheme.moss)
+            Button {
+                model.settings.setWebsiteEnabled(id: website.id, isEnabled: !website.isEnabled)
+            } label: {
+                Image(systemName: website.isEnabled ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(website.isEnabled ? GardenTheme.moss : GardenTheme.softInk.opacity(0.45))
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help(website.isEnabled ? "Disable" : "Enable")
 
             Button {
                 model.settings.deleteWebsite(id: website.id)
             } label: {
-                Image(systemName: "trash")
-                    .foregroundStyle(GardenTheme.softInk.opacity(0.65))
-                    .frame(width: 28, height: 28)
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(GardenTheme.softInk.opacity(0.55))
+                    .frame(width: 24, height: 24)
             }
             .buttonStyle(.plain)
-            .help("Remove website")
+            .help("Remove \(website.domain)")
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
-        .background(GardenTheme.warmWhite.opacity(0.82))
-        .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 17, style: .continuous)
-                .stroke(GardenTheme.deepPine.opacity(0.08), lineWidth: 1)
-        }
+        .padding(.vertical, 6)
     }
 }

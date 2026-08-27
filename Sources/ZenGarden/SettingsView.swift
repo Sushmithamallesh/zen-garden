@@ -10,9 +10,9 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 25) {
                 PageHeader(
-                    eyebrow: "Care",
-                    title: "A small, private tool",
-                    subtitle: "Zen Garden runs locally and asks only for the browser access required to redirect blocked pages."
+                    eyebrow: "",
+                    title: "Settings",
+                    subtitle: ""
                 )
 
                 VStack(alignment: .leading, spacing: 18) {
@@ -22,7 +22,7 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Open Zen Garden when I log in")
                                 .font(GardenTypography.body(14, weight: .semibold))
-                            Text("Recommended for automatic work-hour schedules.")
+                            Text("Required for automatic schedules after login.")
                                 .font(GardenTypography.body(11))
                                 .foregroundStyle(GardenTheme.softInk.opacity(0.68))
                         }
@@ -48,7 +48,7 @@ struct SettingsView: View {
                 .zenCard()
 
                 VStack(alignment: .leading, spacing: 18) {
-                    settingHeader(symbol: "sun.horizon", title: "Daily boundary")
+                    settingHeader(symbol: "sun.horizon", title: "Daily blocking")
 
                     Toggle(
                         isOn: Binding(
@@ -59,7 +59,7 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Block my distracting websites every day")
                                 .font(GardenTypography.body(14, weight: .semibold))
-                            Text("The boundary begins automatically at midnight and stays active until the cutoff.")
+                            Text("Uses the start and end times below.")
                                 .font(GardenTypography.body(11))
                                 .foregroundStyle(GardenTheme.softInk.opacity(0.68))
                         }
@@ -67,9 +67,31 @@ struct SettingsView: View {
                     .toggleStyle(.switch)
                     .tint(GardenTheme.moss)
 
-                    HStack {
+                    HStack(spacing: 28) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Daily cutoff")
+                            Text("Starts")
+                                .font(GardenTypography.body(13, weight: .semibold))
+                            Text("Default: 7:00 AM")
+                                .font(GardenTypography.body(11))
+                                .foregroundStyle(GardenTheme.softInk.opacity(0.64))
+                        }
+                        Spacer()
+                        DatePicker(
+                            "Start time",
+                            selection: Binding(
+                                get: { date(for: model.settings.dailyStartMinute) },
+                                set: { model.settings.setDailyStartMinute(minutes(from: $0)) }
+                            ),
+                            displayedComponents: .hourAndMinute
+                        )
+                        .labelsHidden()
+                        .datePickerStyle(.field)
+
+                        Divider()
+                            .frame(height: 34)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Ends")
                                 .font(GardenTypography.body(13, weight: .semibold))
                             Text("Default: 5:00 PM")
                                 .font(GardenTypography.body(11))
@@ -77,10 +99,13 @@ struct SettingsView: View {
                         }
                         Spacer()
                         DatePicker(
-                            "Daily cutoff",
+                            "End time",
                             selection: Binding(
                                 get: { date(for: model.settings.dailyCutoffMinute) },
-                                set: { model.settings.setDailyCutoffMinute(minutes(from: $0)) }
+                                set: {
+                                    model.settings.setDailyCutoffMinute(minutes(from: $0))
+                                    model.refreshDigestStatus()
+                                }
                             ),
                             displayedComponents: .hourAndMinute
                         )
@@ -91,18 +116,21 @@ struct SettingsView: View {
                 .zenCard()
 
                 VStack(alignment: .leading, spacing: 18) {
-                    settingHeader(symbol: "envelope", title: "Daily reflection")
+                    settingHeader(symbol: "envelope", title: "Daily email")
 
                     Toggle(
                         isOn: Binding(
                             get: { model.settings.digestEnabled },
-                            set: { model.settings.setDigestEnabled($0) }
+                            set: {
+                                model.settings.setDigestEnabled($0)
+                                model.refreshDigestStatus()
+                            }
                         )
                     ) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Email my break reasons at the cutoff")
                                 .font(GardenTypography.body(14, weight: .semibold))
-                            Text("Sent through your Apple Mail account. If your Mac is asleep, it sends after wake.")
+                            Text("Uses Apple Mail. Missed emails send after the Mac wakes.")
                                 .font(GardenTypography.body(11))
                                 .foregroundStyle(GardenTheme.softInk.opacity(0.68))
                         }
@@ -119,7 +147,10 @@ struct SettingsView: View {
                             "you@example.com",
                             text: Binding(
                                 get: { model.settings.digestEmail },
-                                set: { model.settings.setDigestEmail($0) }
+                                set: {
+                                    model.settings.setDigestEmail($0)
+                                    model.refreshDigestStatus()
+                                }
                             )
                         )
                         .textFieldStyle(.plain)
@@ -149,29 +180,47 @@ struct SettingsView: View {
                     HStack {
                         settingHeader(symbol: "lock.shield", title: "Browser permission")
                         Spacer()
+                        Button(model.browserBlocker.isCheckingConnections ? "Checking…" : "Check browsers") {
+                            Task {
+                                await model.browserBlocker.checkInstalledBrowserConnections()
+                            }
+                        }
+                        .buttonStyle(SoftButtonStyle())
+                        .disabled(model.browserBlocker.isCheckingConnections)
+
                         Button("Open Automation settings") {
                             model.browserBlocker.openAutomationSettings()
                         }
                         .buttonStyle(SoftButtonStyle())
                     }
 
-                    Text("The first time Zen Garden blocks a page or sends a reflection, macOS asks whether it may control that app. Choose Allow. You can review this later in Privacy & Security → Automation.")
+                    Text("macOS requires Automation access to redirect browser tabs and send email through Apple Mail. Manage access in Privacy & Security → Automation.")
                         .font(GardenTypography.body(13))
                         .foregroundStyle(GardenTheme.softInk.opacity(0.76))
                         .fixedSize(horizontal: false, vertical: true)
 
                     VStack(spacing: 9) {
                         ForEach(SupportedBrowser.all) { browser in
+                            let connection = model.browserBlocker.connectionStatus(for: browser)
                             HStack {
                                 Circle()
-                                    .fill(GardenTheme.rakeLine.opacity(0.35))
+                                    .fill(connectionColor(connection))
                                     .frame(width: 7, height: 7)
                                 Text(browser.name)
                                     .font(GardenTypography.body(13, weight: .medium))
                                 Spacer()
-                                Text(NSWorkspace.shared.urlForApplication(withBundleIdentifier: browser.bundleIdentifier) == nil ? "Not installed" : "Supported")
-                                    .font(GardenTypography.body(11))
-                                    .foregroundStyle(GardenTheme.softInk.opacity(0.62))
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text(connection.label)
+                                        .font(GardenTypography.body(11))
+                                        .foregroundStyle(GardenTheme.softInk.opacity(0.62))
+                                    if case .failed(let message) = connection {
+                                        Text(message)
+                                            .font(GardenTypography.body(9))
+                                            .foregroundStyle(GardenTheme.vermilion.opacity(0.82))
+                                            .lineLimit(2)
+                                            .multilineTextAlignment(.trailing)
+                                    }
+                                }
                             }
                         }
                     }
@@ -180,14 +229,14 @@ struct SettingsView: View {
 
                 VStack(alignment: .leading, spacing: 15) {
                     settingHeader(symbol: "leaf", title: "Privacy")
-                    Text("No account, analytics, browsing history, or Zen Garden server is used. Your blocklist, break reasons, and schedules stay in your macOS user preferences. Break reasons leave your Mac only when Apple Mail sends your daily reflection.")
+                    Text("No account or analytics. Blocked sites, access reasons, and schedules are stored locally. Access reasons are shared only with Apple Mail when an email is sent.")
                         .font(GardenTypography.body(13))
                         .foregroundStyle(GardenTheme.softInk.opacity(0.76))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .zenCard()
 
-                Text("Zen Garden · local development build 0.2.0")
+                Text("Zen Garden · local development build 0.2.1")
                     .font(GardenTypography.body(10))
                     .foregroundStyle(GardenTheme.softInk.opacity(0.55))
                     .frame(maxWidth: .infinity)
@@ -195,6 +244,9 @@ struct SettingsView: View {
             .padding(34)
         }
         .scrollIndicators(.hidden)
+        .onAppear {
+            launchAtLogin = LoginItemController.isEnabled
+        }
     }
 
     private func settingHeader(symbol: String, title: String) -> some View {
@@ -214,5 +266,16 @@ struct SettingsView: View {
     private func minutes(from date: Date) -> Int {
         let components = Calendar.current.dateComponents([.hour, .minute], from: date)
         return (components.hour ?? 0) * 60 + (components.minute ?? 0)
+    }
+
+    private func connectionColor(_ status: BrowserConnectionStatus) -> Color {
+        switch status {
+        case .ready:
+            GardenTheme.moss
+        case .permissionDenied, .failed:
+            GardenTheme.vermilion
+        case .notInstalled, .notRunning, .noWindow:
+            GardenTheme.rakeLine.opacity(0.45)
+        }
     }
 }

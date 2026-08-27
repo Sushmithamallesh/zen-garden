@@ -9,9 +9,9 @@ struct SchedulesView: View {
             VStack(alignment: .leading, spacing: 25) {
                 HStack(alignment: .bottom) {
                     PageHeader(
-                        eyebrow: "Rhythm",
-                        title: "Work-hour rituals",
-                        subtitle: "Zen Garden can begin automatically on the days and times you choose."
+                        eyebrow: "",
+                        title: "Schedules",
+                        subtitle: "Start and end focus automatically."
                     )
                     Spacer()
                     Button {
@@ -34,7 +34,7 @@ struct SchedulesView: View {
                         Image(systemName: "calendar.badge.plus")
                             .font(.system(size: 27))
                             .foregroundStyle(GardenTheme.moss)
-                        Text("No automatic rhythms yet")
+                        Text("No schedules")
                             .font(GardenTypography.display(17, weight: .medium))
                     }
                     .frame(maxWidth: .infinity)

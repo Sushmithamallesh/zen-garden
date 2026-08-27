@@ -4,6 +4,7 @@ import SwiftUI
 final class ZenGardenAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.applicationIconImage = AppIconRenderer.make()
+        LoginItemController.enableByDefaultIfNeeded()
     }
 }
 
@@ -43,5 +44,6 @@ private struct BreakRequestWindow: View {
             NSApp.keyWindow?.close()
         }
         .background(GardenTheme.warmWhite)
+        .handlesZenGardenCommands()
     }
 }

@@ -12,6 +12,7 @@ struct SupportedBrowser: Identifiable, Equatable, Sendable {
     enum ScriptingStyle: Sendable {
         case safari
         case chromium
+        case arc
     }
 
     static let all: [SupportedBrowser] = [
@@ -19,7 +20,7 @@ struct SupportedBrowser: Identifiable, Equatable, Sendable {
         SupportedBrowser(name: "Google Chrome", bundleIdentifier: "com.google.Chrome", scriptingStyle: .chromium),
         SupportedBrowser(name: "Brave", bundleIdentifier: "com.brave.Browser", scriptingStyle: .chromium),
         SupportedBrowser(name: "Microsoft Edge", bundleIdentifier: "com.microsoft.edgemac", scriptingStyle: .chromium),
-        SupportedBrowser(name: "Arc", bundleIdentifier: "company.thebrowser.Browser", scriptingStyle: .chromium),
+        SupportedBrowser(name: "Arc", bundleIdentifier: "company.thebrowser.Browser", scriptingStyle: .arc),
         SupportedBrowser(name: "Opera", bundleIdentifier: "com.operasoftware.Opera", scriptingStyle: .chromium)
     ]
 
@@ -35,21 +36,43 @@ struct ScriptResult: Sendable {
     var errorMessage: String?
 }
 
+enum BrowserConnectionStatus: Equatable, Sendable {
+    case notInstalled
+    case notRunning
+    case noWindow
+    case ready
+    case permissionDenied
+    case failed(String)
+
+    var label: String {
+        switch self {
+        case .notInstalled: "Not installed"
+        case .notRunning: "Installed · not open"
+        case .noWindow: "Open · no window"
+        case .ready: "Connected"
+        case .permissionDenied: "Permission needed"
+        case .failed: "Connection failed"
+        }
+    }
+}
+
 actor BrowserScriptClient {
+    static let notRunningMarker = "__ZEN_GARDEN_NOT_RUNNING__"
+    static let noWindowMarker = "__ZEN_GARDEN_NO_WINDOW__"
+
     func currentURL(in browser: SupportedBrowser) -> ScriptResult {
-        let tabExpression = browser.scriptingStyle == .safari
-            ? "URL of current tab of front window"
-            : "URL of active tab of front window"
+        let tabExpression = tabExpression(for: browser)
 
         let script = """
         tell application id "\(browser.bundleIdentifier)"
-            if it is running then
-                if (count of windows) > 0 then
-                    return \(tabExpression)
-                end if
+            if it is not running then
+                return "\(Self.notRunningMarker)"
             end if
+            if (count of windows) is 0 then
+                return "\(Self.noWindowMarker)"
+            end if
+            return \(tabExpression)
         end tell
-        return ""
         """
 
         return execute(script)
@@ -57,9 +80,7 @@ actor BrowserScriptClient {
 
     func redirect(browser: SupportedBrowser, to destination: URL) -> ScriptResult {
         let escapedDestination = appleScriptString(destination.absoluteString)
-        let tabExpression = browser.scriptingStyle == .safari
-            ? "URL of current tab of front window"
-            : "URL of active tab of front window"
+        let tabExpression = tabExpression(for: browser)
 
         let script = """
         tell application id "\(browser.bundleIdentifier)"
@@ -74,6 +95,12 @@ actor BrowserScriptClient {
         """
 
         return execute(script)
+    }
+
+    private func tabExpression(for browser: SupportedBrowser) -> String {
+        browser.scriptingStyle == .safari
+            ? "URL of current tab of front window"
+            : "URL of active tab of front window"
     }
 
     private func execute(_ source: String) -> ScriptResult {
@@ -97,27 +124,30 @@ actor BrowserScriptClient {
 
 @MainActor
 final class BrowserBlocker: ObservableObject {
-    @Published private(set) var statusText = "Resting"
-    @Published private(set) var detailText = "Begin a focus session when you are ready."
+    @Published private(set) var statusText = "Focus off"
+    @Published private(set) var detailText = "Website blocking is inactive."
     @Published private(set) var lastBlockedDomain: String?
     @Published private(set) var permissionHelpNeeded = false
+    @Published private(set) var connectionStatuses: [String: BrowserConnectionStatus] = [:]
+    @Published private(set) var isCheckingConnections = false
 
     private let scripts = BrowserScriptClient()
     private weak var settings: SettingsStore?
     private var timer: Timer?
     private var isChecking = false
-    private var lastRedirect: (domain: String, date: Date)?
 
     func start(settings: SettingsStore) {
         self.settings = settings
         guard timer == nil else { return }
 
-        timer = Timer.scheduledTimer(withTimeInterval: 0.7, repeats: true) { [weak self] _ in
+        let pollingTimer = Timer(timeInterval: 0.7, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 await self?.checkActiveBrowser()
             }
         }
-        timer?.tolerance = 0.12
+        pollingTimer.tolerance = 0.12
+        RunLoop.main.add(pollingTimer, forMode: .common)
+        timer = pollingTimer
 
         Task {
             await checkActiveBrowser()
@@ -134,6 +164,34 @@ final class BrowserBlocker: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
+    func connectionStatus(for browser: SupportedBrowser) -> BrowserConnectionStatus {
+        if let status = connectionStatuses[browser.bundleIdentifier] {
+            return status
+        }
+        return NSWorkspace.shared.urlForApplication(withBundleIdentifier: browser.bundleIdentifier) == nil
+            ? .notInstalled
+            : .notRunning
+    }
+
+    func checkInstalledBrowserConnections() async {
+        guard !isCheckingConnections else { return }
+        isCheckingConnections = true
+        defer { isCheckingConnections = false }
+
+        for browser in SupportedBrowser.all {
+            guard NSWorkspace.shared.urlForApplication(
+                withBundleIdentifier: browser.bundleIdentifier
+            ) != nil else {
+                connectionStatuses[browser.bundleIdentifier] = .notInstalled
+                continue
+            }
+
+            let result = await scripts.currentURL(in: browser)
+            connectionStatuses[browser.bundleIdentifier] = status(for: result)
+        }
+        permissionHelpNeeded = connectionStatuses.values.contains(.permissionDenied)
+    }
+
     private func checkActiveBrowser() async {
         guard !isChecking, let settings else { return }
         isChecking = true
@@ -141,8 +199,8 @@ final class BrowserBlocker: ObservableObject {
 
         let focus = settings.focusState()
         guard focus.isActive else {
-            statusText = "Resting"
-            detailText = "Begin a focus session when you are ready."
+            statusText = "Focus off"
+            detailText = "Website blocking is inactive."
             return
         }
 
@@ -150,71 +208,194 @@ final class BrowserBlocker: ObservableObject {
             for: NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         ) else {
             statusText = "Focus is active"
-            detailText = "Waiting quietly in the background."
+            detailText = "Website blocking is running."
             return
         }
 
-        statusText = "Watching \(browser.name)"
-        detailText = "Distracting paths are closed during this session."
+        statusText = "Monitoring \(browser.name)"
+        detailText = "Blocked websites will be redirected."
 
         let current = await scripts.currentURL(in: browser)
-        if current.errorCode == -1743 {
-            permissionHelpNeeded = true
-            statusText = "Automation permission needed"
-            detailText = "Allow Zen Garden to control \(browser.name) in System Settings."
+        let currentStatus = status(for: current)
+        connectionStatuses[browser.bundleIdentifier] = currentStatus
+
+        if currentStatus == .permissionDenied {
+            showPermissionError(for: browser)
             return
         }
 
+        if case .failed(let message) = currentStatus {
+            statusText = "\(browser.name) connection failed"
+            detailText = message
+            return
+        }
+
+        if currentStatus == .noWindow || currentStatus == .notRunning {
+            statusText = "Focus is active"
+            detailText = "\(browser.name) has no open browsing window."
+            return
+        }
+
+        permissionHelpNeeded = false
         guard let urlString = current.value,
               !urlString.isEmpty,
+              urlString != BrowserScriptClient.notRunningMarker,
+              urlString != BrowserScriptClient.noWindowMarker,
               !urlString.hasPrefix("file://"),
+              !urlString.hasPrefix("data:text/html"),
+              !urlString.hasPrefix("about:blank#zen-garden-"),
               let match = DomainMatcher.firstMatch(urlString: urlString, in: settings.websites)
         else { return }
 
         if settings.isDomainTemporarilyAllowed(match.domain) {
-            statusText = "A deliberate break is open"
-            detailText = "(match.domain) will close again automatically."
+            statusText = "Temporary access active"
+            detailText = "\(match.domain) is temporarily allowed."
             return
         }
 
-        if let lastRedirect,
-           lastRedirect.domain == match.domain,
-           Date().timeIntervalSince(lastRedirect.date) < 1.5 {
+        let outcome = await enforceBlock(domain: match.domain, in: browser)
+        switch outcome {
+        case .blocked(let usedFallback):
+            connectionStatuses[browser.bundleIdentifier] = .ready
+            permissionHelpNeeded = false
+            detailText = usedFallback
+                ? "\(match.domain) was blocked using the compatibility page."
+                : "\(match.domain) was blocked."
+        case .permissionDenied:
+            connectionStatuses[browser.bundleIdentifier] = .permissionDenied
+            showPermissionError(for: browser)
+            return
+        case .failed(let message):
+            connectionStatuses[browser.bundleIdentifier] = .failed(message)
+            statusText = "\(browser.name) could not block this page"
+            detailText = message
             return
         }
 
-        guard let destination = blockedPageURL(for: match.domain) else {
-            statusText = "Could not load the focus page"
-            return
+        lastBlockedDomain = match.domain
+        statusText = "Blocked \(match.domain)"
+    }
+
+    private enum EnforcementOutcome {
+        case blocked(usedFallback: Bool)
+        case permissionDenied
+        case failed(String)
+    }
+
+    private func enforceBlock(
+        domain: String,
+        in browser: SupportedBrowser
+    ) async -> EnforcementOutcome {
+        guard let destination = blockedPageURL(for: domain, browser: browser) else {
+            return .failed("Zen Garden could not prepare its local focus page.")
         }
 
         let redirected = await scripts.redirect(browser: browser, to: destination)
         if redirected.errorCode == -1743 {
-            permissionHelpNeeded = true
-            statusText = "Automation permission needed"
-            detailText = "Allow Zen Garden to control \(browser.name) in System Settings."
-            return
+            return .permissionDenied
+        }
+        if let error = redirected.errorMessage {
+            return .failed(error)
         }
 
-        guard redirected.errorCode == nil else {
-            statusText = "Browser connection interrupted"
-            detailText = redirected.errorMessage ?? "Return to Zen Garden and try again."
-            return
+        if await browserMovedAway(from: domain, in: browser) {
+            return .blocked(usedFallback: false)
         }
 
-        lastRedirect = (match.domain, Date())
-        lastBlockedDomain = match.domain
-        statusText = "A distraction was released"
-        detailText = "\(match.domain) is closed until focus ends."
+        guard let fallback = BlockPageDestination.fallbackURL(domain: domain) else {
+            return .failed("\(browser.name) did not accept the focus page.")
+        }
+        let fallbackResult = await scripts.redirect(browser: browser, to: fallback)
+        if fallbackResult.errorCode == -1743 {
+            return .permissionDenied
+        }
+        if let error = fallbackResult.errorMessage {
+            return .failed(error)
+        }
+
+        if await browserMovedAway(from: domain, in: browser) {
+            return .blocked(usedFallback: true)
+        }
+        return .failed("\(browser.name) accepted the command but kept the blocked page open.")
     }
 
-    private func blockedPageURL(for domain: String) -> URL? {
+    private func browserMovedAway(
+        from domain: String,
+        in browser: SupportedBrowser
+    ) async -> Bool {
+        for _ in 0..<3 {
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            let verification = await scripts.currentURL(in: browser)
+            if verification.errorCode != nil {
+                return false
+            }
+            guard let value = verification.value, !value.isEmpty else {
+                continue
+            }
+            if value == BrowserScriptClient.notRunningMarker
+                || value == BrowserScriptClient.noWindowMarker {
+                return false
+            }
+            if !DomainMatcher.matches(urlString: value, blockedDomain: domain) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func status(for result: ScriptResult) -> BrowserConnectionStatus {
+        if result.errorCode == -1743 {
+            return .permissionDenied
+        }
+        if result.errorCode != nil {
+            return .failed(result.errorMessage ?? "The browser returned an unknown automation error.")
+        }
+        if let message = result.errorMessage {
+            return .failed(message)
+        }
+        switch result.value {
+        case BrowserScriptClient.notRunningMarker:
+            return .notRunning
+        case BrowserScriptClient.noWindowMarker, "":
+            return .noWindow
+        default:
+            return .ready
+        }
+    }
+
+    private func showPermissionError(for browser: SupportedBrowser) {
+        permissionHelpNeeded = true
+        statusText = "Automation permission needed"
+        detailText = "Allow Zen Garden to control \(browser.name) in System Settings."
+    }
+
+    private func blockedPageURL(for domain: String, browser: SupportedBrowser) -> URL? {
         guard let resource = AppResources.url(forResource: "Blocked", withExtension: "html") else {
             return nil
+        }
+
+        if browser.scriptingStyle != .safari,
+           let html = try? String(contentsOf: resource, encoding: .utf8) {
+            return BlockPageDestination.inlineURL(
+                html: embeddedGardenArtwork(in: html),
+                domain: domain
+            )
         }
 
         var components = URLComponents(url: resource, resolvingAgainstBaseURL: false)
         components?.fragment = domain
         return components?.url
+    }
+
+    private func embeddedGardenArtwork(in html: String) -> String {
+        guard let artworkURL = AppResources.url(
+            forResource: "ZenGardenHeroBrowser",
+            withExtension: "jpg"
+        ),
+        let artworkData = try? Data(contentsOf: artworkURL)
+        else { return html }
+
+        let dataURL = "data:image/jpeg;base64,\(artworkData.base64EncodedString())"
+        return html.replacingOccurrences(of: "ZenGardenHeroBrowser.jpg", with: dataURL)
     }
 }

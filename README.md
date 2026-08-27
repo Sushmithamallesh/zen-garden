@@ -4,7 +4,8 @@ Zen Garden is a local-first macOS website blocker with a quiet Japandi-inspired 
 
 ## What is included
 
-- An automatic daily boundary that blocks selected sites until 5:00 PM
+- Automatic daily blocking from 7:00 AM to 5:00 PM, with adjustable start and end times
+- Launch at login enabled by default, with an opt-out in Settings
 - Reason-required, site-specific breaks that close again automatically
 - A daily Apple Mail reflection containing every break reason
 - First-class menu-bar controls and Raycast script commands
@@ -69,6 +70,9 @@ the full settings window.
 
 If you rebuild the app and macOS no longer presents the permission correctly, remove the old Automation permission and launch the new build again.
 
+Use **Settings → Browser permission → Check browsers** to see which installed
+browsers are connected and which still need Automation permission.
+
 ## Develop in Xcode
 
 Install Xcode, then open `Package.swift`. Xcode recognizes the Swift package as a macOS executable project. Select the `ZenGarden` scheme and press **Run**.
@@ -84,7 +88,16 @@ chmod +x scripts/test-core.sh
 
 ## How blocking works
 
-While focus is active, Zen Garden checks only the active tab of the frontmost supported browser. If its host matches an enabled blocked domain, Zen Garden asks the browser through Apple Events to replace the page with the bundled local focus page.
+While focus is active, Zen Garden checks only the active tab of the frontmost
+supported browser. If its host matches an enabled blocked domain, Zen Garden
+asks the browser through Apple Events to replace the page with the local focus
+page. Every redirect is read back and verified. Chromium-family browsers use a
+self-contained page, with a safe blank-page fallback if a browser refuses the
+styled destination.
+
+The current adapters cover Safari, Arc, Google Chrome, Brave, Microsoft Edge,
+and Opera. Firefox does not expose the tab automation interface used by this
+version and is therefore not currently supported.
 
 This is a behavioral boundary, not a security product. A user can still disable Automation permission, quit Zen Garden, or use an unsupported browser. A later version can replace this layer with browser extensions or a Network Extension for stronger enforcement.
 

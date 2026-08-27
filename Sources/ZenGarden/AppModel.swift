@@ -7,7 +7,7 @@ import ServiceManagement
 final class AppModel: ObservableObject {
     let settings: SettingsStore
     let browserBlocker: BrowserBlocker
-    @Published private(set) var digestStatus = "Daily digest is waiting for an email address."
+    @Published private(set) var digestStatus = "Add an email address to enable the daily email."
     @Published private(set) var isSendingDigest = false
 
     private var cancellables: Set<AnyCancellable> = []
@@ -20,6 +20,7 @@ final class AppModel: ObservableObject {
         let browserBlocker = BrowserBlocker()
         self.settings = settings
         self.browserBlocker = browserBlocker
+        refreshDigestStatus()
 
         settings.objectWillChange
             .sink { [weak self] _ in
@@ -45,13 +46,31 @@ final class AppModel: ObservableObject {
         await sendDigest(for: Date(), automatic: false)
     }
 
+    func refreshDigestStatus(now: Date = Date()) {
+        if !settings.digestEnabled {
+            digestStatus = "Daily email is off."
+        } else if settings.digestEmail.isEmpty {
+            digestStatus = "Add an email address."
+        } else if settings.digestWasSent(for: now) {
+            digestStatus = "Today’s email was sent."
+        } else if let pendingDate = settings.pendingDigestDate(at: now) {
+            digestStatus = Calendar.current.isDate(pendingDate, inSameDayAs: now)
+                ? "Today’s email is pending."
+                : "A missed email is pending."
+        } else if let cutoff = settings.dailyCutoff(on: now) {
+            digestStatus = "Next email: \(cutoff.formatted(date: .omitted, time: .shortened))."
+        }
+    }
+
     private func startMaintenance() {
-        maintenanceTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 await self?.performMaintenance()
             }
         }
-        maintenanceTimer?.tolerance = 3
+        timer.tolerance = 3
+        RunLoop.main.add(timer, forMode: .common)
+        maintenanceTimer = timer
 
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
@@ -72,9 +91,7 @@ final class AppModel: ObservableObject {
         settings.performMaintenance(at: now)
         guard settings.digestEnabled,
               !settings.digestEmail.isEmpty,
-              let cutoff = settings.dailyCutoff(on: now),
-              now >= cutoff,
-              !settings.digestWasSent(for: now)
+              let digestDate = settings.pendingDigestDate(at: now)
         else { return }
 
         if let lastAutomaticDigestAttempt,
@@ -82,7 +99,7 @@ final class AppModel: ObservableObject {
             return
         }
         lastAutomaticDigestAttempt = now
-        await sendDigest(for: now, automatic: true)
+        await sendDigest(for: digestDate, automatic: true)
     }
 
     private func sendDigest(for date: Date, automatic: Bool) async {
@@ -95,19 +112,20 @@ final class AppModel: ObservableObject {
         }
 
         isSendingDigest = true
-        digestStatus = "Sending today’s reflection through Apple Mail…"
+        digestStatus = "Sending through Apple Mail…"
         let records = settings.breakRecords(on: date)
+        let sentAt = Date()
         let subject = "Zen Garden · \(Self.subjectDateFormatter.string(from: date))"
-        let body = Self.digestBody(records: records, date: date)
+        let body = Self.digestBody(records: records, date: date, asOf: sentAt)
 
         do {
             try await digestMailer.send(to: recipient, subject: subject, body: body)
-            let isPastCutoff = settings.dailyCutoff(on: date).map { date >= $0 } ?? false
+            let isPastCutoff = settings.dailyCutoff(on: date).map { sentAt >= $0 } ?? false
             if automatic || isPastCutoff {
                 settings.markDigestSent(for: date)
-                digestStatus = "Today’s reflection was sent through Apple Mail."
+                digestStatus = "Today’s email was sent."
             } else {
-                digestStatus = "Preview sent. The final reflection will still send at the cutoff."
+                digestStatus = "Email sent. The scheduled email will still send at the cutoff."
             }
         } catch {
             digestStatus = "Could not send: \(error.localizedDescription)"
@@ -116,13 +134,15 @@ final class AppModel: ObservableObject {
     }
 
     private static func looksLikeEmail(_ value: String) -> Bool {
-        let parts = value.split(separator: "@", omittingEmptySubsequences: false)
-        return parts.count == 2 && parts[1].contains(".")
+        value.range(
+            of: #"^[^\s@]+@[^\s@]+\.[^\s@]+$"#,
+            options: .regularExpression
+        ) != nil
     }
 
-    private static func digestBody(records: [BreakRecord], date: Date) -> String {
+    private static func digestBody(records: [BreakRecord], date: Date, asOf sentAt: Date) -> String {
         var lines = [
-            "ZEN GARDEN · DAILY REFLECTION",
+            "ZEN GARDEN · ACCESS SUMMARY",
             subjectDateFormatter.string(from: date),
             ""
         ]
@@ -130,20 +150,18 @@ final class AppModel: ObservableObject {
         if records.isEmpty {
             lines.append("No breaks were requested today.")
         } else {
-            lines.append(records.count == 1 ? "1 deliberate break" : "\(records.count) deliberate breaks")
+            lines.append(records.count == 1 ? "1 temporary access request" : "\(records.count) temporary access requests")
             lines.append("")
 
             for record in records {
-                let requestedMinutes = max(1, Int(record.scheduledEnd.timeIntervalSince(record.requestedAt) / 60))
-                lines.append("\(timeFormatter.string(from: record.requestedAt)) · \(record.domain) · \(requestedMinutes) min")
+                let actualMinutes = max(1, Int(ceil(record.activeDuration(until: sentAt) / 60)))
+                lines.append("\(timeFormatter.string(from: record.requestedAt)) · \(record.domain) · \(actualMinutes) min")
                 lines.append(record.reason)
                 lines.append("")
             }
         }
 
-        lines.append("Notice the pattern without judging it. Tomorrow is another garden.")
-        lines.append("")
-        lines.append("Sent privately from Zen Garden on your Mac.")
+        lines.append("Generated locally by Zen Garden.")
         return lines.joined(separator: "\n")
     }
 
@@ -161,11 +179,18 @@ final class AppModel: ObservableObject {
 }
 
 enum LoginItemController {
+    private static let preferenceKey = "zenGarden.launchAtLoginEnabled.v1"
+
     static var isEnabled: Bool {
         SMAppService.mainApp.status == .enabled
     }
 
-    static func setEnabled(_ isEnabled: Bool) throws {
+    static func enableByDefaultIfNeeded(defaults: UserDefaults = .standard) {
+        guard defaults.object(forKey: preferenceKey) == nil else { return }
+        try? setEnabled(true, defaults: defaults)
+    }
+
+    static func setEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) throws {
         if isEnabled {
             if SMAppService.mainApp.status != .enabled {
                 try SMAppService.mainApp.register()
@@ -173,6 +198,8 @@ enum LoginItemController {
         } else if SMAppService.mainApp.status == .enabled {
             try SMAppService.mainApp.unregister()
         }
+
+        defaults.set(isEnabled, forKey: preferenceKey)
     }
 }
 

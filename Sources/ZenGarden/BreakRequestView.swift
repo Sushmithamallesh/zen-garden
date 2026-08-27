@@ -6,6 +6,7 @@ struct BreakRequestView: View {
     @State private var selectedDomain = ""
     @State private var reason = ""
     @State private var duration = 10
+    @State private var validationMessage: String?
 
     let compact: Bool
     let onComplete: () -> Void
@@ -20,13 +21,13 @@ struct BreakRequestView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: compact ? 12 : 17) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("REQUEST A BREAK")
+                Text("TEMPORARY ACCESS")
                     .font(GardenTypography.label(9, weight: .bold))
                     .tracking(1.4)
                     .foregroundStyle(GardenTheme.vermilion)
-                Text("Pause with intention.")
+                Text("Unblock one website")
                     .font(GardenTypography.display(compact ? 20 : 25, weight: .semibold))
-                Text("Only the website you choose will open, then it closes automatically.")
+                Text("Choose a duration and enter a reason.")
                     .font(GardenTypography.body(11))
                     .foregroundStyle(GardenTheme.softInk.opacity(0.72))
                     .fixedSize(horizontal: false, vertical: true)
@@ -45,8 +46,8 @@ struct BreakRequestView: View {
             }
 
             VStack(alignment: .leading, spacing: 7) {
-                fieldLabel("Why are you opening it?")
-                TextField("Be specific—the reason will be in today’s email.", text: $reason, axis: .vertical)
+                fieldLabel("Reason")
+                TextField("Required. Included in today’s email.", text: $reason, axis: .vertical)
                     .lineLimit(2...4)
                     .focused($reasonIsFocused)
                     .textFieldStyle(.plain)
@@ -79,6 +80,12 @@ struct BreakRequestView: View {
                     .buttonStyle(VermilionButtonStyle(compact: true))
                     .disabled(!canSubmit)
             }
+
+            if let validationMessage {
+                Text(validationMessage)
+                    .font(GardenTypography.body(11))
+                    .foregroundStyle(GardenTheme.vermilion)
+            }
         }
         .padding(compact ? 2 : 22)
         .frame(width: compact ? nil : 430)
@@ -98,7 +105,9 @@ struct BreakRequestView: View {
     }
 
     private var canSubmit: Bool {
-        !selectedDomain.isEmpty && !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        model.settings.focusState().isActive
+            && !selectedDomain.isEmpty
+            && !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func fieldLabel(_ text: String) -> some View {
@@ -119,13 +128,24 @@ struct BreakRequestView: View {
     }
 
     private func submit() {
-        guard canSubmit,
-              model.settings.requestBreak(
+        guard model.settings.focusState().isActive else {
+            validationMessage = "Focus is no longer active."
+            return
+        }
+        guard canSubmit else {
+            validationMessage = "Choose a website and enter a reason."
+            return
+        }
+        guard model.settings.requestBreak(
                   domain: selectedDomain,
                   reason: reason,
                   minutes: duration
               )
-        else { return }
+        else {
+            validationMessage = "This website is already allowed or no longer enabled."
+            return
+        }
+        validationMessage = nil
         onComplete()
     }
 }

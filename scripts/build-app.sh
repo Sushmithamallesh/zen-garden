@@ -39,7 +39,7 @@ if [[ -d "$resource_bundle" ]]; then
 fi
 
 packaged_resources="$app_bundle/Contents/Resources/ZenGarden_ZenGarden.bundle"
-for required_resource in Blocked.html ZenGardenHero.png; do
+for required_resource in Blocked.html ZenGardenHero.png ZenGardenHeroBrowser.jpg; do
   if [[ ! -f "$packaged_resources/$required_resource" ]]; then
     print -u2 "Missing packaged resource: $required_resource"
     exit 1
@@ -47,6 +47,11 @@ for required_resource in Blocked.html ZenGardenHero.png; do
 done
 
 chmod 755 "$app_bundle/Contents/MacOS/ZenGarden"
-codesign --force --deep --sign - "$app_bundle" >/dev/null
+codesign \
+  --force \
+  --deep \
+  --sign - \
+  --entitlements "$project_root/ZenGarden.entitlements" \
+  "$app_bundle" >/dev/null
 
 print "$app_bundle"
