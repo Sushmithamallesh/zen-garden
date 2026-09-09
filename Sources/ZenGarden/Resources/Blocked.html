@@ -43,16 +43,16 @@
       background-repeat: no-repeat;
       background-size: cover;
       color: var(--ink);
-      font-family: ui-rounded, "SF Pro Rounded", "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
     }
 
     main {
       position: relative;
       z-index: 1;
-      width: min(620px, calc(100% - 48px));
-      padding: 54px 56px;
+      width: min(560px, calc(100% - 48px));
+      padding: 46px 48px;
       border: 1px solid rgba(255,255,255,.72);
-      border-radius: 30px;
+      border-radius: 26px;
       background: rgba(254, 251, 242, .90);
       box-shadow: 0 30px 80px rgba(69,84,31,.12);
       backdrop-filter: blur(14px);
@@ -109,13 +109,25 @@
     @media (max-width: 600px) {
       main { padding: 38px 30px; }
     }
+
+    @media (prefers-reduced-transparency: reduce) {
+      main {
+        background: var(--paper-light);
+        backdrop-filter: none;
+      }
+    }
+
+    @media (prefers-contrast: more) {
+      main { border-color: rgba(14, 40, 26, .42); }
+      .message { color: var(--ink); }
+    }
   </style>
 </head>
 <body>
   <main>
     <p class="eyebrow">Focus active</p>
     <h1>Website blocked</h1>
-    <p class="message">Open Zen Garden from the menu bar to request a break.</p>
+    <p class="message">Use the menu bar to request a break.</p>
     <div class="domain" id="domain">Blocked website</div>
   </main>
 

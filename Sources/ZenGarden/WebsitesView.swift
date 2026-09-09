@@ -18,7 +18,7 @@ struct BlockedWebsiteList: View {
                 let activeCount = displayedWebsites.filter(\.isEnabled).count
                 Text("\(activeCount) active")
                     .font(GardenTypography.label(10, weight: .semibold))
-                    .foregroundStyle(GardenTheme.moss)
+                    .foregroundStyle(GardenTheme.matchaShadow)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(GardenTheme.matchaPale.opacity(0.48))
@@ -44,7 +44,7 @@ struct BlockedWebsiteList: View {
                     Image(systemName: "plus")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Color.white)
-                        .frame(width: 38, height: 38)
+                        .frame(width: 40, height: 40)
                         .background(GardenTheme.moss)
                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
@@ -60,7 +60,7 @@ struct BlockedWebsiteList: View {
             }
 
             if displayedWebsites.isEmpty {
-                Text("Nothing is blocked yet.")
+                Text("No blocked websites.")
                     .font(GardenTypography.body(13))
                     .foregroundStyle(GardenTheme.softInk.opacity(0.62))
                     .frame(maxWidth: .infinity)
@@ -74,7 +74,6 @@ struct BlockedWebsiteList: View {
                             if index < displayedWebsites.count - 1 {
                                 Divider()
                                     .overlay(GardenTheme.deepPine.opacity(0.07))
-                                    .padding(.leading, 31)
                             }
                         }
                     }
@@ -116,10 +115,6 @@ private struct WebsiteRow: View {
         let isLocked = model.settings.isDomainLocked(website.domain)
 
         HStack(spacing: 11) {
-            Circle()
-                .fill(website.isEnabled ? GardenTheme.moss : GardenTheme.softInk.opacity(0.24))
-                .frame(width: 6, height: 6)
-
             Text(website.domain)
                 .font(GardenTypography.body(13, weight: .medium))
                 .foregroundStyle(website.isEnabled ? GardenTheme.ink : GardenTheme.softInk.opacity(0.62))
@@ -134,7 +129,7 @@ private struct WebsiteRow: View {
                 Image(systemName: isLocked ? "lock.fill" : (website.isEnabled ? "checkmark.circle.fill" : "circle"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle((website.isEnabled || isLocked) ? GardenTheme.moss : GardenTheme.softInk.opacity(0.45))
-                    .frame(width: 24, height: 24)
+                    .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
             .help(isLocked ? "Locked on Sundays" : (website.isEnabled ? "Disable" : "Enable"))
@@ -144,14 +139,19 @@ private struct WebsiteRow: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(GardenTheme.softInk.opacity(isHovering ? 0.68 : 0.28))
-                    .frame(width: 24, height: 24)
+                    .foregroundStyle(GardenTheme.softInk.opacity(isHovering ? 0.68 : 0.18))
+                    .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
             .help("Remove \(website.domain)")
             .disabled(isLocked)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 3)
+        .padding(.leading, 2)
+        .background {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(GardenTheme.ink.opacity(isHovering ? 0.035 : 0))
+        }
         .contentShape(Rectangle())
         .onHover { isHovering = $0 }
     }

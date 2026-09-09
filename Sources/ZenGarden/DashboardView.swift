@@ -36,7 +36,7 @@ struct DashboardView: View {
                     }
                         .font(GardenTypography.label(10, weight: .bold))
                         .tracking(1.6)
-                        .foregroundStyle(state.isActive ? GardenTheme.moss : GardenTheme.softInk.opacity(0.72))
+                        .foregroundStyle(state.isActive ? GardenTheme.matchaShadow : GardenTheme.softInk.opacity(0.72))
 
                     if state.isActive {
                         Text(remainingText(until: state.endsAt, now: now))
@@ -137,10 +137,13 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(model.browserBlocker.statusText)
                     .font(GardenTypography.body(11, weight: .semibold))
-                Text(model.browserBlocker.detailText)
-                    .font(GardenTypography.body(10))
-                    .foregroundStyle(GardenTheme.softInk.opacity(0.62))
-                    .lineLimit(1)
+
+                if model.browserBlocker.permissionHelpNeeded {
+                    Text(model.browserBlocker.detailText)
+                        .font(GardenTypography.body(10))
+                        .foregroundStyle(GardenTheme.softInk.opacity(0.72))
+                        .lineLimit(2)
+                }
             }
 
             Spacer()
@@ -190,7 +193,7 @@ struct MenuBarFocusView: View {
 
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 11) {
-                    ZenGardenMark(size: 34)
+                    ZenGardenMark(size: 30)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(state.isActive ? "Focus active" : "Focus off")
                             .font(GardenTypography.body(14, weight: .semibold))
@@ -241,14 +244,22 @@ struct MenuBarFocusView: View {
                             }
                         }
 
-                        Text(todaySummary(today, now: context.date))
-                            .font(GardenTypography.body(11))
-                            .foregroundStyle(GardenTheme.softInk.opacity(0.68))
+                        if !today.isEmpty {
+                            Text(todaySummary(today, now: context.date))
+                                .font(GardenTypography.body(11))
+                                .foregroundStyle(GardenTheme.softInk.opacity(0.68))
+                        }
                     } else {
+                        Text("Start a focus session")
+                            .font(GardenTypography.body(12, weight: .semibold))
+
                         HStack {
                             Button("25 min") { model.settings.startSession(minutes: 25) }
+                                .buttonStyle(SoftButtonStyle())
                             Button("50 min") { model.settings.startSession(minutes: 50) }
+                                .buttonStyle(SoftButtonStyle())
                             Button("90 min") { model.settings.startSession(minutes: 90) }
+                                .buttonStyle(SoftButtonStyle())
                         }
                     }
                 }

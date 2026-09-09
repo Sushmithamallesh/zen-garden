@@ -21,7 +21,7 @@ enum GardenTheme {
 
 enum GardenTypography {
     static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .rounded)
+        .system(size: size, weight: weight, design: .default)
     }
 
     static func body(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
@@ -29,7 +29,7 @@ enum GardenTypography {
     }
 
     static func label(_ size: CGFloat, weight: Font.Weight = .medium) -> Font {
-        .system(size: size, weight: weight, design: .rounded)
+        .system(size: size, weight: weight, design: .default)
     }
 }
 
@@ -139,13 +139,14 @@ struct ZenCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(20)
-            .background(GardenTheme.warmWhite.opacity(0.965))
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(GardenTheme.warmWhite.opacity(0.94))
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(0.72), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.68), lineWidth: 1)
             }
-            .shadow(color: GardenTheme.matchaShadow.opacity(0.10), radius: 18, y: 8)
+            .shadow(color: GardenTheme.matchaShadow.opacity(0.055), radius: 2, y: 1)
+            .shadow(color: GardenTheme.matchaShadow.opacity(0.075), radius: 18, y: 8)
     }
 }
 
@@ -156,6 +157,7 @@ extension View {
 }
 
 struct VermilionButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var compact = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -166,12 +168,13 @@ struct VermilionButtonStyle: ButtonStyle {
             .padding(.vertical, compact ? 8 : 11)
             .background(configuration.isPressed ? GardenTheme.vermilion.opacity(0.78) : GardenTheme.vermilion)
             .clipShape(Capsule())
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
 struct GardenPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var compact = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -182,12 +185,14 @@ struct GardenPrimaryButtonStyle: ButtonStyle {
             .padding(.vertical, compact ? 8 : 10)
             .background(configuration.isPressed ? GardenTheme.matchaShadow : GardenTheme.moss)
             .clipShape(RoundedRectangle(cornerRadius: compact ? 9 : 11, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
 struct SoftButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(GardenTypography.label(12, weight: .semibold))
@@ -200,6 +205,8 @@ struct SoftButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
                     .stroke(GardenTheme.deepPine.opacity(0.12), lineWidth: 1)
             }
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 

@@ -24,6 +24,7 @@ struct RootView: View {
                 } label: {
                     Image(systemName: "calendar")
                 }
+                .accessibilityLabel("Schedules")
                 .help("Schedules")
 
                 Button {
@@ -31,6 +32,7 @@ struct RootView: View {
                 } label: {
                     Image(systemName: "gearshape")
                 }
+                .accessibilityLabel("Settings")
                 .help("Settings")
             }
         }

@@ -31,7 +31,7 @@ struct ZenGardenApp: App {
             MenuBarFocusView()
                 .environmentObject(model)
         } label: {
-            ZenGardenMark(size: 18)
+            Image(systemName: "leaf.fill")
                 .accessibilityLabel("Zen Garden")
         }
         .menuBarExtraStyle(.window)
