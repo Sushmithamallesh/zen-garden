@@ -58,26 +58,24 @@
       backdrop-filter: blur(14px);
     }
 
-    .mark {
-      display: grid;
-      place-items: center;
-      width: 48px;
-      height: 48px;
-      margin-bottom: 34px;
-      border-radius: 50%;
-      background: var(--pine);
-      color: rgba(255,255,255,.92);
-      font-size: 21px;
-      letter-spacing: -4px;
-    }
-
     .eyebrow {
-      margin: 0 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 14px;
       color: var(--vermilion);
       font-size: 11px;
       font-weight: 750;
       letter-spacing: .19em;
       text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--moss);
+      content: "";
     }
 
     h1 {
@@ -108,35 +106,16 @@
       font-weight: 650;
     }
 
-    .breath {
-      position: absolute;
-      top: 58px;
-      right: 58px;
-      width: 54px;
-      height: 54px;
-      border: 1px solid rgba(88, 107, 77, .23);
-      border-radius: 50%;
-      animation: breathe 5s ease-in-out infinite;
-    }
-
-    @keyframes breathe {
-      0%, 100% { transform: scale(.72); opacity: .35; }
-      50% { transform: scale(1.18); opacity: .78; }
-    }
-
     @media (max-width: 600px) {
       main { padding: 38px 30px; }
-      .breath { top: 38px; right: 34px; }
     }
   </style>
 </head>
 <body>
   <main>
-    <div class="mark" aria-hidden="true">◌</div>
-    <div class="breath" aria-hidden="true"></div>
     <p class="eyebrow">Focus active</p>
     <h1>Website blocked</h1>
-    <p class="message">Use the Zen Garden menu bar item to request temporary access.</p>
+    <p class="message">Open Zen Garden from the menu bar to request a break.</p>
     <div class="domain" id="domain">Blocked website</div>
   </main>
 

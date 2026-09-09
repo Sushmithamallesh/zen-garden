@@ -12,87 +12,110 @@ struct DashboardView: View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let state = model.settings.focusState(at: context.date)
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 focusCard(state: state, now: context.date)
                 BlockedWebsiteList()
-                browserStatus
             }
-            .frame(maxWidth: 900)
-            .padding(18)
+            .frame(maxWidth: 860)
+            .padding(.horizontal, 26)
+            .padding(.vertical, 22)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
     private func focusCard(state: FocusState, now: Date) -> some View {
-        HStack(spacing: 22) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 15) {
+            HStack(alignment: .center, spacing: 24) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text(state.isActive ? "FOCUS ACTIVE" : "START FOCUS")
+                    HStack(spacing: 7) {
+                        Circle()
+                            .fill(state.isActive ? GardenTheme.moss : GardenTheme.softInk.opacity(0.38))
+                            .frame(width: 7, height: 7)
+
+                        Text(state.isActive ? "FOCUS ACTIVE" : "READY")
+                    }
                         .font(GardenTypography.label(10, weight: .bold))
                         .tracking(1.6)
-                        .foregroundStyle(state.isActive ? GardenTheme.moss : GardenTheme.vermilion)
+                        .foregroundStyle(state.isActive ? GardenTheme.moss : GardenTheme.softInk.opacity(0.72))
 
                     if state.isActive {
                         Text(remainingText(until: state.endsAt, now: now))
-                            .font(GardenTypography.label(34, weight: .medium))
+                            .font(.system(size: 38, weight: .semibold, design: .rounded))
                             .monospacedDigit()
-                        Text(sourceText(state.source))
-                            .font(GardenTypography.body(13))
-                            .foregroundStyle(GardenTheme.softInk.opacity(0.78))
+
+                        HStack(spacing: 6) {
+                            Text(sourceText(state.source))
+                            if let endDate = state.endsAt {
+                                Text("·")
+                                Text("Ends \(endDate.formatted(date: .omitted, time: .shortened))")
+                            }
+                        }
+                        .font(GardenTypography.body(12, weight: .medium))
+                        .foregroundStyle(GardenTheme.softInk.opacity(0.72))
                     } else {
-                        Text("Choose a duration")
-                            .font(GardenTypography.display(20, weight: .medium))
+                        Text("Start a focus session")
+                            .font(GardenTypography.display(22, weight: .semibold))
                     }
                 }
 
-            }
+                Spacer(minLength: 24)
 
-            Spacer(minLength: 16)
-
-            if state.isActive {
-                HStack(spacing: 8) {
-                    if state.source == .manual {
-                        Button("End session") {
-                            model.settings.endManualSession()
-                        }
-                        .buttonStyle(SoftButtonStyle())
-                    }
-
-                    Button("Request a break…") {
-                        showingBreakRequest = true
-                    }
-                    .buttonStyle(SoftButtonStyle())
-
-                    if !model.settings.activeBreaks(at: now).isEmpty {
-                        Button("Resume blocking") {
-                            model.settings.endAllBreaks(at: now)
-                        }
-                        .buttonStyle(SoftButtonStyle())
-                    }
-                }
-            } else {
-                HStack(spacing: 8) {
-                    ForEach(durations, id: \.self) { minutes in
+                if state.isActive {
+                    VStack(alignment: .trailing, spacing: 9) {
                         Button {
-                            selectedMinutes = minutes
+                            showingBreakRequest = true
                         } label: {
-                            Text("\(minutes) min")
-                                .font(GardenTypography.label(12, weight: .semibold))
-                                .foregroundStyle(selectedMinutes == minutes ? Color.white : GardenTheme.softInk)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 7)
-                                .background(selectedMinutes == minutes ? GardenTheme.moss : GardenTheme.ink.opacity(0.055))
-                                .clipShape(Capsule())
+                            Label("Request a break", systemImage: "lock.open")
                         }
-                        .buttonStyle(.plain)
-                    }
+                        .buttonStyle(SoftButtonStyle())
 
-                    Button("Start") {
-                        model.settings.startSession(minutes: selectedMinutes)
+                        HStack(spacing: 8) {
+                            if state.source == .manual {
+                                Button("End session") {
+                                    model.settings.endManualSession()
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            if !model.settings.activeBreaks(at: now).isEmpty {
+                                Button("Resume blocking") {
+                                    model.settings.endAllBreaks(at: now)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .font(GardenTypography.body(11, weight: .medium))
+                        .foregroundStyle(GardenTheme.softInk.opacity(0.70))
                     }
-                    .buttonStyle(VermilionButtonStyle(compact: true))
+                } else {
+                    HStack(spacing: 8) {
+                        ForEach(durations, id: \.self) { minutes in
+                            Button {
+                                selectedMinutes = minutes
+                            } label: {
+                                Text("\(minutes) min")
+                                    .font(GardenTypography.label(11, weight: .semibold))
+                                    .foregroundStyle(selectedMinutes == minutes ? Color.white : GardenTheme.softInk)
+                                    .padding(.horizontal, 11)
+                                    .padding(.vertical, 7)
+                                    .background(selectedMinutes == minutes ? GardenTheme.moss : GardenTheme.ink.opacity(0.055))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        Button("Start") {
+                            model.settings.startSession(minutes: selectedMinutes)
+                        }
+                        .buttonStyle(GardenPrimaryButtonStyle(compact: true))
+                    }
                 }
             }
+
+            Divider()
+                .overlay(GardenTheme.deepPine.opacity(0.08))
+
+            browserStatus
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .zenCard()
@@ -106,16 +129,19 @@ struct DashboardView: View {
     }
 
     private var browserStatus: some View {
-        HStack(spacing: 9) {
-            Circle()
-                .fill(model.browserBlocker.permissionHelpNeeded ? GardenTheme.vermilion : GardenTheme.moss)
-                .frame(width: 7, height: 7)
-            Text(model.browserBlocker.statusText)
-                .font(GardenTypography.body(12, weight: .semibold))
-            Text(model.browserBlocker.detailText)
-                .font(GardenTypography.body(11))
-                .foregroundStyle(GardenTheme.softInk.opacity(0.65))
-                .lineLimit(1)
+        HStack(spacing: 10) {
+            Image(systemName: model.browserBlocker.permissionHelpNeeded ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(model.browserBlocker.permissionHelpNeeded ? GardenTheme.vermilion : GardenTheme.moss)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(model.browserBlocker.statusText)
+                    .font(GardenTypography.body(11, weight: .semibold))
+                Text(model.browserBlocker.detailText)
+                    .font(GardenTypography.body(10))
+                    .foregroundStyle(GardenTheme.softInk.opacity(0.62))
+                    .lineLimit(1)
+            }
 
             Spacer()
 
@@ -126,7 +152,6 @@ struct DashboardView: View {
                 .buttonStyle(SoftButtonStyle())
             }
         }
-        .padding(.horizontal, 4)
     }
 
     private func remainingText(until endDate: Date?, now: Date) -> String {

@@ -6,40 +6,51 @@ struct BlockedWebsiteList: View {
     @State private var validationMessage: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
+        let displayedWebsites = model.settings.websitesForBlocking()
+
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center) {
                 Text("Blocked websites")
-                    .font(GardenTypography.display(18, weight: .semibold))
+                    .font(GardenTypography.display(20, weight: .semibold))
 
                 Spacer()
 
-                let activeCount = model.settings.websites.filter(\.isEnabled).count
+                let activeCount = displayedWebsites.filter(\.isEnabled).count
                 Text("\(activeCount) active")
                     .font(GardenTypography.label(10, weight: .semibold))
                     .foregroundStyle(GardenTheme.moss)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(GardenTheme.matchaPale.opacity(0.48))
+                    .clipShape(Capsule())
             }
 
-            HStack(spacing: 9) {
+            HStack(spacing: 8) {
                 TextField("Add a website, e.g. reddit.com", text: $newWebsite)
                     .textFieldStyle(.plain)
-                    .font(GardenTypography.body(14))
-                    .padding(.horizontal, 13)
-                    .padding(.vertical, 7)
-                    .background(GardenTheme.ink.opacity(0.045))
+                    .font(GardenTypography.body(13))
+                    .padding(.horizontal, 12)
+                    .frame(height: 38)
+                    .background(GardenTheme.ricePaper.opacity(0.46))
                     .foregroundStyle(GardenTheme.ink)
-                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(GardenTheme.deepPine.opacity(0.14), lineWidth: 1)
+                    }
                     .onSubmit(addWebsite)
 
                 Button(action: addWebsite) {
                     Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Color.white)
-                        .frame(width: 30, height: 30)
-                        .background(GardenTheme.vermilion)
-                        .clipShape(Circle())
+                        .frame(width: 38, height: 38)
+                        .background(GardenTheme.moss)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .help("Add website")
+                .disabled(newWebsite.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
 
             if let validationMessage {
@@ -48,36 +59,40 @@ struct BlockedWebsiteList: View {
                     .foregroundStyle(GardenTheme.vermilion)
             }
 
-            if model.settings.websites.isEmpty {
+            if displayedWebsites.isEmpty {
                 Text("Nothing is blocked yet.")
                     .font(GardenTypography.body(13))
                     .foregroundStyle(GardenTheme.softInk.opacity(0.62))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(model.settings.websites.enumerated()), id: \.element.id) { index, website in
-                        WebsiteRow(website: website)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(displayedWebsites.enumerated()), id: \.element.id) { index, website in
+                            WebsiteRow(website: website)
 
-                        if index < model.settings.websites.count - 1 {
-                            Divider()
-                                .overlay(GardenTheme.deepPine.opacity(0.07))
+                            if index < displayedWebsites.count - 1 {
+                                Divider()
+                                    .overlay(GardenTheme.deepPine.opacity(0.07))
+                                    .padding(.leading, 31)
+                            }
                         }
                     }
+                    .padding(.horizontal, 12)
                 }
+                .frame(height: min(CGFloat(displayedWebsites.count) * 43, 270))
+                .scrollIndicators(.hidden)
+                .background(GardenTheme.ricePaper.opacity(0.28))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
 
-            Label("Sunday lock: x.com and twitter.com", systemImage: "lock.fill")
-                .font(GardenTypography.body(10, weight: .medium))
-                .foregroundStyle(GardenTheme.softInk.opacity(0.62))
+            if SundayLockPolicy.isActive(at: Date()) {
+                Label("Twitter is locked for Sunday", systemImage: "lock.fill")
+                    .font(GardenTypography.body(10, weight: .medium))
+                    .foregroundStyle(GardenTheme.softInk.opacity(0.62))
+            }
         }
-        .padding(16)
-        .background(GardenTheme.warmWhite.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(GardenTheme.deepPine.opacity(0.09), lineWidth: 1)
-        }
+        .zenCard()
     }
 
     private func addWebsite() {
@@ -94,18 +109,19 @@ struct BlockedWebsiteList: View {
 
 private struct WebsiteRow: View {
     @EnvironmentObject private var model: AppModel
+    @State private var isHovering = false
     let website: BlockedWebsite
 
     var body: some View {
         let isLocked = model.settings.isDomainLocked(website.domain)
 
-        HStack(spacing: 12) {
+        HStack(spacing: 11) {
             Circle()
                 .fill(website.isEnabled ? GardenTheme.moss : GardenTheme.softInk.opacity(0.24))
-                .frame(width: 7, height: 7)
+                .frame(width: 6, height: 6)
 
             Text(website.domain)
-                .font(GardenTypography.body(14, weight: .medium))
+                .font(GardenTypography.body(13, weight: .medium))
                 .foregroundStyle(website.isEnabled ? GardenTheme.ink : GardenTheme.softInk.opacity(0.62))
 
             Spacer()
@@ -116,7 +132,7 @@ private struct WebsiteRow: View {
                 }
             } label: {
                 Image(systemName: isLocked ? "lock.fill" : (website.isEnabled ? "checkmark.circle.fill" : "circle"))
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle((website.isEnabled || isLocked) ? GardenTheme.moss : GardenTheme.softInk.opacity(0.45))
                     .frame(width: 24, height: 24)
             }
@@ -128,13 +144,15 @@ private struct WebsiteRow: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(GardenTheme.softInk.opacity(0.55))
+                    .foregroundStyle(GardenTheme.softInk.opacity(isHovering ? 0.68 : 0.28))
                     .frame(width: 24, height: 24)
             }
             .buttonStyle(.plain)
             .help("Remove \(website.domain)")
             .disabled(isLocked)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
     }
 }

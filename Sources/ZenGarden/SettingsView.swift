@@ -236,7 +236,7 @@ struct SettingsView: View {
                 }
                 .zenCard()
 
-                Text("Zen Garden · local development build 0.2.1")
+                Text(versionText)
                     .font(GardenTypography.body(10))
                     .foregroundStyle(GardenTheme.softInk.opacity(0.55))
                     .frame(maxWidth: .infinity)
@@ -256,6 +256,11 @@ struct SettingsView: View {
             Text(title)
                 .font(GardenTypography.body(15, weight: .semibold))
         }
+    }
+
+    private var versionText: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        return "Zen Garden \(version ?? "")"
     }
 
     private func date(for minute: Int) -> Date {

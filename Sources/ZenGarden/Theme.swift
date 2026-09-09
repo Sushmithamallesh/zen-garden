@@ -21,7 +21,7 @@ enum GardenTheme {
 
 enum GardenTypography {
     static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .serif)
+        .system(size: size, weight: weight, design: .rounded)
     }
 
     static func body(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
@@ -139,13 +139,13 @@ struct ZenCardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(20)
-            .background(GardenTheme.warmWhite.opacity(0.92))
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(GardenTheme.warmWhite.opacity(0.965))
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(GardenTheme.deepPine.opacity(0.09), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(Color.white.opacity(0.72), lineWidth: 1)
             }
-            .shadow(color: GardenTheme.deepPine.opacity(0.075), radius: 14, y: 6)
+            .shadow(color: GardenTheme.matchaShadow.opacity(0.10), radius: 18, y: 8)
     }
 }
 
@@ -171,15 +171,35 @@ struct VermilionButtonStyle: ButtonStyle {
     }
 }
 
+struct GardenPrimaryButtonStyle: ButtonStyle {
+    var compact = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(GardenTypography.label(compact ? 12 : 14, weight: .semibold))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, compact ? 14 : 18)
+            .padding(.vertical, compact ? 8 : 10)
+            .background(configuration.isPressed ? GardenTheme.matchaShadow : GardenTheme.moss)
+            .clipShape(RoundedRectangle(cornerRadius: compact ? 9 : 11, style: .continuous))
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
 struct SoftButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(GardenTypography.label(13, weight: .medium))
+            .font(GardenTypography.label(12, weight: .semibold))
             .foregroundStyle(GardenTheme.softInk)
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 13)
             .padding(.vertical, 8)
-            .background(GardenTheme.ink.opacity(configuration.isPressed ? 0.10 : 0.055))
-            .clipShape(Capsule())
+            .background(configuration.isPressed ? GardenTheme.ink.opacity(0.10) : GardenTheme.warmWhite.opacity(0.72))
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .stroke(GardenTheme.deepPine.opacity(0.12), lineWidth: 1)
+            }
     }
 }
 
