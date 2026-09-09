@@ -185,25 +185,18 @@ struct CoreTests {
             "expires a requested break on time"
         )
 
-        let inlinePage = BlockPageDestination.inlineURL(
+        let inlinePage = BlockPageDestination.inlinePage(
             html: "<html><body>Return to focus.</body></html>",
             domain: "instagram.com"
         )
-        if inlinePage?.scheme != "data" || inlinePage?.fragment != "instagram.com" {
-            print("  inline URL: \(String(describing: inlinePage))")
-            print("  scheme: \(String(describing: inlinePage?.scheme))")
-            print("  fragment: \(String(describing: inlinePage?.fragment))")
-        }
         expect(
-            inlinePage?.scheme == "data" && inlinePage?.fragment == "instagram.com",
+            inlinePage.hasPrefix("data:text/html;charset=utf-8;base64,")
+                && inlinePage.hasSuffix("#instagram.com"),
             "builds a self-contained Chromium focus page"
         )
-        let fallbackPage = BlockPageDestination.fallbackURL(domain: "instagram.com")
-        if fallbackPage?.absoluteString != "about:blank#zen-garden-instagram.com" {
-            print("  fallback URL: \(String(describing: fallbackPage))")
-        }
         expect(
-            fallbackPage?.absoluteString == "about:blank#zen-garden-instagram.com",
+            BlockPageDestination.fallbackPage(domain: "instagram.com")
+                == "about:blank#zen-garden-instagram.com",
             "builds a browser-safe fallback destination"
         )
 

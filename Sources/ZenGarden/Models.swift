@@ -180,29 +180,15 @@ enum SundayLockPolicy {
 }
 
 enum BlockPageDestination {
-    static func inlineURL(html: String, domain: String) -> URL? {
+    static func inlinePage(html: String, domain: String) -> String {
         let encodedPage = Data(html.utf8).base64EncodedString()
-        return opaqueURL(
-            scheme: "data",
-            path: "text/html;charset=utf-8;base64,\(encodedPage)",
-            fragment: domain
-        )
+        let encodedDomain = domain.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
+            ?? domain
+        return "data:text/html;charset=utf-8;base64,\(encodedPage)#\(encodedDomain)"
     }
 
-    static func fallbackURL(domain: String) -> URL? {
-        opaqueURL(
-            scheme: "about",
-            path: "blank",
-            fragment: "zen-garden-\(domain)"
-        )
-    }
-
-    private static func opaqueURL(scheme: String, path: String, fragment: String) -> URL? {
-        var components = URLComponents()
-        components.scheme = scheme
-        components.path = path
-        components.fragment = fragment
-        return components.url
+    static func fallbackPage(domain: String) -> String {
+        "about:blank#zen-garden-\(domain)"
     }
 }
 

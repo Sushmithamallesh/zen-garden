@@ -78,8 +78,8 @@ actor BrowserScriptClient {
         return execute(script)
     }
 
-    func redirect(browser: SupportedBrowser, to destination: URL) -> ScriptResult {
-        let escapedDestination = appleScriptString(destination.absoluteString)
+    func redirect(browser: SupportedBrowser, to destination: String) -> ScriptResult {
+        let escapedDestination = appleScriptString(destination)
         let tabExpression = tabExpression(for: browser)
 
         let script = """
@@ -291,7 +291,7 @@ final class BrowserBlocker: ObservableObject {
         domain: String,
         in browser: SupportedBrowser
     ) async -> EnforcementOutcome {
-        guard let destination = blockedPageURL(for: domain, browser: browser) else {
+        guard let destination = blockedPageDestination(for: domain, browser: browser) else {
             return .failed("Zen Garden could not prepare its local focus page.")
         }
 
@@ -307,9 +307,7 @@ final class BrowserBlocker: ObservableObject {
             return .blocked(usedFallback: false)
         }
 
-        guard let fallback = BlockPageDestination.fallbackURL(domain: domain) else {
-            return .failed("\(browser.name) did not accept the focus page.")
-        }
+        let fallback = BlockPageDestination.fallbackPage(domain: domain)
         let fallbackResult = await scripts.redirect(browser: browser, to: fallback)
         if fallbackResult.errorCode == -1743 {
             return .permissionDenied
@@ -374,22 +372,20 @@ final class BrowserBlocker: ObservableObject {
         detailText = "Allow Zen Garden to control \(browser.name) in System Settings."
     }
 
-    private func blockedPageURL(for domain: String, browser: SupportedBrowser) -> URL? {
+    private func blockedPageDestination(for domain: String, browser: SupportedBrowser) -> String? {
         guard let resource = AppResources.url(forResource: "Blocked", withExtension: "html") else {
             return nil
         }
 
         if browser.scriptingStyle != .safari,
            let html = try? String(contentsOf: resource, encoding: .utf8) {
-            return BlockPageDestination.inlineURL(
+            return BlockPageDestination.inlinePage(
                 html: embeddedGardenArtwork(in: html),
                 domain: domain
             )
         }
 
-        var components = URLComponents(url: resource, resolvingAgainstBaseURL: false)
-        components?.fragment = domain
-        return components?.url
+        return "\(resource.absoluteString)#\(domain)"
     }
 
     private func embeddedGardenArtwork(in html: String) -> String {
