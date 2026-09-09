@@ -10,6 +10,10 @@ enum AppResources {
             Bundle.main.resourceURL?
                 .appendingPathComponent(resourceBundleName, isDirectory: true)
                 .appendingPathComponent(filename),
+            Bundle.main.resourceURL?
+                .appendingPathComponent(resourceBundleName, isDirectory: true)
+                .appendingPathComponent("Contents/Resources", isDirectory: true)
+                .appendingPathComponent(filename),
             Bundle.main.bundleURL
                 .appendingPathComponent(resourceBundleName, isDirectory: true)
                 .appendingPathComponent(filename),

@@ -70,7 +70,8 @@ fi
 
 packaged_resources="$app_bundle/Contents/Resources/ZenGarden_ZenGarden.bundle"
 for required_resource in Blocked.html ZenGardenHero.png ZenGardenHeroBrowser.jpg; do
-  if [[ ! -f "$packaged_resources/$required_resource" ]]; then
+  if [[ ! -f "$packaged_resources/$required_resource" \
+        && ! -f "$packaged_resources/Contents/Resources/$required_resource" ]]; then
     print -u2 "Missing packaged resource: $required_resource"
     exit 1
   fi
