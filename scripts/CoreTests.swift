@@ -189,13 +189,21 @@ struct CoreTests {
             html: "<html><body>Return to focus.</body></html>",
             domain: "instagram.com"
         )
+        if inlinePage?.scheme != "data" || inlinePage?.fragment != "instagram.com" {
+            print("  inline URL: \(String(describing: inlinePage))")
+            print("  scheme: \(String(describing: inlinePage?.scheme))")
+            print("  fragment: \(String(describing: inlinePage?.fragment))")
+        }
         expect(
             inlinePage?.scheme == "data" && inlinePage?.fragment == "instagram.com",
             "builds a self-contained Chromium focus page"
         )
+        let fallbackPage = BlockPageDestination.fallbackURL(domain: "instagram.com")
+        if fallbackPage?.absoluteString != "about:blank#zen-garden-instagram.com" {
+            print("  fallback URL: \(String(describing: fallbackPage))")
+        }
         expect(
-            BlockPageDestination.fallbackURL(domain: "instagram.com")?.absoluteString
-                == "about:blank#zen-garden-instagram.com",
+            fallbackPage?.absoluteString == "about:blank#zen-garden-instagram.com",
             "builds a browser-safe fallback destination"
         )
 
