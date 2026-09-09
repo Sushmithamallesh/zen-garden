@@ -98,10 +98,7 @@ struct BreakRequestView: View {
     }
 
     private var enabledDomains: [String] {
-        model.settings.websites
-            .filter(\.isEnabled)
-            .map(\.domain)
-            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        model.settings.availableBreakDomains()
     }
 
     private var canSubmit: Bool {
@@ -130,6 +127,10 @@ struct BreakRequestView: View {
     private func submit() {
         guard model.settings.focusState().isActive else {
             validationMessage = "Focus is no longer active."
+            return
+        }
+        if model.settings.isDomainLocked(selectedDomain) {
+            validationMessage = "Twitter cannot be temporarily allowed on Sundays."
             return
         }
         guard canSubmit else {

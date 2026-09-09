@@ -57,9 +57,9 @@ struct SettingsView: View {
                         )
                     ) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Block my distracting websites every day")
+                            Text("Use automatic weekday blocking")
                                 .font(GardenTypography.body(14, weight: .semibold))
-                            Text("Uses the start and end times below.")
+                            Text("Monday–Friday use these times. Saturday is off. Sunday is always active.")
                                 .font(GardenTypography.body(11))
                                 .foregroundStyle(GardenTheme.softInk.opacity(0.68))
                         }
@@ -69,7 +69,7 @@ struct SettingsView: View {
 
                     HStack(spacing: 28) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Starts")
+                            Text("Weekday start")
                                 .font(GardenTypography.body(13, weight: .semibold))
                             Text("Default: 7:00 AM")
                                 .font(GardenTypography.body(11))
@@ -91,7 +91,7 @@ struct SettingsView: View {
                             .frame(height: 34)
 
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Ends")
+                            Text("Weekday end")
                                 .font(GardenTypography.body(13, weight: .semibold))
                             Text("Default: 5:00 PM")
                                 .font(GardenTypography.body(11))

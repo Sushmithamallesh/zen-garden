@@ -2,9 +2,18 @@
 
 Zen Garden is a local-first macOS website blocker with a quiet Japandi-inspired interface. It blocks selected domains in supported browsers during manual focus sessions or recurring schedules.
 
+## Download
+
+Download the newest macOS build from [GitHub Releases](https://github.com/Sushmithamallesh/zen-garden/releases). The DMG is the simplest option: open it and drag Zen Garden to Applications.
+
+Preview releases are ad-hoc signed while Apple Developer signing is being set up. On the first launch of a preview, Control-click **Zen Garden**, choose **Open**, then confirm **Open**. Signed and notarized releases will open normally.
+
+Release builds are universal and support both Apple Silicon and Intel Macs.
+
 ## What is included
 
-- Automatic daily blocking from 7:00 AM to 5:00 PM, with adjustable start and end times
+- Automatic blocking from 7:00 AM to 5:00 PM Monday–Friday, off Saturday, and all day Sunday
+- A non-bypassable Sunday lock for `x.com` and `twitter.com`
 - Launch at login enabled by default, with an opt-out in Settings
 - Reason-required, site-specific breaks that close again automatically
 - A daily Apple Mail reflection containing every break reason
@@ -14,8 +23,6 @@ Zen Garden is a local-first macOS website blocker with a quiet Japandi-inspired 
 - Editable website blocklist with subdomain matching
 - Safari, Chrome, Brave, Edge, Arc, and Opera support
 - A local zen-style block page
-- Menu-bar controls
-- Optional launch at login
 - No account, server, analytics, or browsing-history storage
 
 ## Requirements
@@ -103,13 +110,13 @@ This is a behavioral boundary, not a security product. A user can still disable 
 
 ## Distribution
 
-You do not need to publish a Mac app. Common options are:
+GitHub Actions creates a universal DMG, ZIP, and SHA-256 checksum file whenever a version tag such as `v0.3.0` is pushed. Without Apple credentials it publishes an ad-hoc-signed prerelease. With a Developer ID certificate and notarization credentials configured, it publishes a normal signed release.
 
-1. **Personal/local build:** Build and run it yourself. Free, no review.
-2. **Direct download:** Join the Apple Developer Program, sign with Developer ID, notarize, and distribute a `.dmg` or `.zip` from GitHub or a website.
-3. **Mac App Store:** Join the program, adapt to sandbox/review requirements, and submit through App Store Connect.
+See [Releasing](docs/RELEASING.md) for the versioning, signing, and publishing steps. A website can link to the Releases page now; after the first signed release it can use this stable direct-download URL:
 
-For an open-source utility like Zen Garden, direct signed and notarized distribution is usually the most flexible public-release path.
+```text
+https://github.com/Sushmithamallesh/zen-garden/releases/latest/download/Zen-Garden.dmg
+```
 
 ## License
 

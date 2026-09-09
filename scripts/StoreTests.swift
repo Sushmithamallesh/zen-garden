@@ -120,6 +120,57 @@ struct StoreTests {
             "keeps the longest overlapping focus boundary active"
         )
 
+        let weeklySuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
+        let weeklyDefaults = UserDefaults(suiteName: weeklySuite)!
+        weeklyDefaults.removePersistentDomain(forName: weeklySuite)
+        defer { weeklyDefaults.removePersistentDomain(forName: weeklySuite) }
+
+        var policyCalendar = Calendar(identifier: .gregorian)
+        policyCalendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let saturdayNoon = policyCalendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 22, hour: 12)
+        )!
+        let sundayNoon = policyCalendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 23, hour: 12)
+        )!
+        let weeklyStore = SettingsStore(defaults: weeklyDefaults)
+
+        expect(
+            weeklyStore.focusState(at: saturdayNoon, calendar: policyCalendar) == .inactive,
+            "keeps the automatic schedule off Saturday"
+        )
+        expect(
+            weeklyStore.focusState(at: sundayNoon, calendar: policyCalendar).source == .daily,
+            "keeps the automatic schedule active all Sunday"
+        )
+        let sundayWebsites = weeklyStore.websitesForBlocking(
+            at: sundayNoon,
+            calendar: policyCalendar
+        )
+        expect(
+            sundayWebsites.contains { $0.domain == "x.com" && $0.isEnabled }
+                && sundayWebsites.contains { $0.domain == "twitter.com" && $0.isEnabled },
+            "enforces both Twitter domains on Sunday"
+        )
+        expect(
+            !weeklyStore.requestBreak(
+                domain: "x.com",
+                reason: "Try to bypass Sunday",
+                minutes: 10,
+                now: sundayNoon
+            ),
+            "rejects Twitter access requests on Sunday"
+        )
+        expect(
+            !weeklyStore.availableBreakDomains(at: sundayNoon, calendar: policyCalendar).contains("x.com"),
+            "removes Twitter from Sunday break choices"
+        )
+        weeklyStore.setDailyFocusEnabled(false)
+        expect(
+            weeklyStore.focusState(at: sundayNoon, calendar: policyCalendar).source == .daily,
+            "keeps the Sunday lock active when weekday blocking is disabled"
+        )
+
         if failures > 0 {
             print("\n\(failures) store test(s) failed.")
             exit(1)

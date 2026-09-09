@@ -138,6 +138,41 @@ struct CoreTests {
             "ends the daily boundary at its cutoff"
         )
 
+        let saturdayNoon = calendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 22, hour: 12)
+        )!
+        let sundayNoon = calendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 23, hour: 12)
+        )!
+        expect(
+            DailyFocusPolicy.activeInterval(
+                containing: saturdayNoon,
+                startMinute: 7 * 60,
+                cutoffMinute: 17 * 60,
+                calendar: calendar
+            ) == nil,
+            "keeps automatic blocking off on Saturday"
+        )
+        expect(
+            DailyFocusPolicy.activeInterval(
+                containing: sundayNoon,
+                startMinute: 7 * 60,
+                cutoffMinute: 17 * 60,
+                calendar: calendar
+            )?.duration == 24 * 60 * 60,
+            "keeps automatic blocking active all Sunday"
+        )
+        expect(
+            SundayLockPolicy.isLocked(domain: "x.com", at: sundayNoon, calendar: calendar)
+                && SundayLockPolicy.isLocked(domain: "twitter.com", at: sundayNoon, calendar: calendar),
+            "locks both Twitter domains on Sunday"
+        )
+        expect(
+            !SundayLockPolicy.isLocked(domain: "reddit.com", at: sundayNoon, calendar: calendar)
+                && !SundayLockPolicy.isLocked(domain: "x.com", at: saturdayNoon, calendar: calendar),
+            "limits the permanent lock to Twitter on Sunday"
+        )
+
         let breakRecord = BreakRecord(
             domain: "reddit.com",
             reason: "Reply to a project question",

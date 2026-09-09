@@ -197,7 +197,8 @@ final class BrowserBlocker: ObservableObject {
         isChecking = true
         defer { isChecking = false }
 
-        let focus = settings.focusState()
+        let now = Date()
+        let focus = settings.focusState(at: now)
         guard focus.isActive else {
             statusText = "Focus off"
             detailText = "Website blocking is inactive."
@@ -244,10 +245,14 @@ final class BrowserBlocker: ObservableObject {
               !urlString.hasPrefix("file://"),
               !urlString.hasPrefix("data:text/html"),
               !urlString.hasPrefix("about:blank#zen-garden-"),
-              let match = DomainMatcher.firstMatch(urlString: urlString, in: settings.websites)
+              let match = DomainMatcher.firstMatch(
+                  urlString: urlString,
+                  in: settings.websitesForBlocking(at: now)
+              )
         else { return }
 
-        if settings.isDomainTemporarilyAllowed(match.domain) {
+        if !settings.isDomainLocked(match.domain, at: now),
+           settings.isDomainTemporarilyAllowed(match.domain, at: now) {
             statusText = "Temporary access active"
             detailText = "\(match.domain) is temporarily allowed."
             return

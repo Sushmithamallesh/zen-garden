@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: macos-15
+    env:
+      APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate release version
+        run: |
+          app_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)"
+          if [[ "v$app_version" != "$GITHUB_REF_NAME" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match app version v$app_version" >&2
+            exit 1
+          fi
+
+      - name: Test domain and schedule logic
+        run: ./scripts/test-core.sh
+
+      - name: Import Developer ID certificate
+        id: signing
+        run: |
+          if [[ -z "$APPLE_CERTIFICATE_P12" ]]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          keychain="$RUNNER_TEMP/zen-garden-signing.keychain-db"
+          keychain_password="$(openssl rand -hex 24)"
+          certificate="$RUNNER_TEMP/developer-id.p12"
+
+          printf '%s' "$APPLE_CERTIFICATE_P12" | base64 -D > "$certificate"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security list-keychain -d user -s "$keychain" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain"
+
+          identity="$(security find-identity -v -p codesigning "$keychain" | awk -F'"' '/Developer ID Application/ { print $2; exit }')"
+          if [[ -z "$identity" ]]; then
+            echo "No Developer ID Application identity found" >&2
+            exit 1
+          fi
+
+          echo "CODESIGN_IDENTITY=$identity" >> "$GITHUB_ENV"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build universal app
+        run: ./scripts/build-app.sh --universal
+
+      - name: Notarize signed app
+        if: steps.signing.outputs.signed == 'true'
+        run: |
+          if [[ -z "$APPLE_ID" || -z "$APPLE_TEAM_ID" || -z "$APPLE_APP_PASSWORD" ]]; then
+            echo "Notarization credentials are required when a signing certificate is configured." >&2
+            exit 1
+          fi
+
+          upload="$RUNNER_TEMP/Zen-Garden-notarization.zip"
+          ditto -c -k --sequesterRsrc --keepParent "dist/Zen Garden.app" "$upload"
+          xcrun notarytool submit "$upload" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+          xcrun stapler staple "dist/Zen Garden.app"
+          xcrun stapler validate "dist/Zen Garden.app"
+
+      - name: Package downloads
+        run: ./scripts/package-release.sh
+
+      - name: Verify packaged app
+        run: |
+          codesign --verify --deep --strict "dist/Zen Garden.app"
+          if [[ "${{ steps.signing.outputs.signed }}" == "true" ]]; then
+            spctl --assess --type execute --verbose=4 "dist/Zen Garden.app"
+          fi
+
+      - name: Publish signed release
+        if: steps.signing.outputs.signed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/Zen-Garden.dmg#Zen Garden for macOS (DMG)" \
+            "dist/Zen-Garden.zip#Zen Garden for macOS (ZIP)" \
+            "dist/SHA256SUMS.txt#SHA-256 checksums" \
+            --title "Zen Garden $GITHUB_REF_NAME" \
+            --generate-notes
+
+      - name: Publish unsigned prerelease
+        if: steps.signing.outputs.signed != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/Zen-Garden.dmg#Zen Garden for macOS (DMG)" \
+            "dist/Zen-Garden.zip#Zen Garden for macOS (ZIP)" \
+            "dist/SHA256SUMS.txt#SHA-256 checksums" \
+            --title "Zen Garden $GITHUB_REF_NAME" \
+            --prerelease \
+            --notes "Open-source preview build. This build is ad-hoc signed, so macOS may require Control-clicking the app and choosing Open the first time."

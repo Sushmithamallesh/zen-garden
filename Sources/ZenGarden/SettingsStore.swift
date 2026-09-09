@@ -95,7 +95,7 @@ final class SettingsStore: ObservableObject {
     func focusState(at date: Date = Date(), calendar: Calendar = .current) -> FocusState {
         var candidates: [(source: FocusSource, end: Date)] = []
 
-        if dailyFocusEnabled,
+        if (dailyFocusEnabled || SundayLockPolicy.isActive(at: date, calendar: calendar)),
            let daily = DailyFocusPolicy.activeInterval(
                containing: date,
                startMinute: dailyStartMinute,
@@ -151,6 +151,7 @@ final class SettingsStore: ObservableObject {
         guard !trimmedReason.isEmpty,
               focus.isActive,
               let domain = DomainMatcher.normalizedDomain(from: input),
+              !isDomainLocked(domain, at: now),
               websites.contains(where: { $0.isEnabled && $0.domain == domain }),
               !isDomainTemporarilyAllowed(domain, at: now),
               let requestedEnd = Calendar.current.date(
@@ -184,6 +185,43 @@ final class SettingsStore: ObservableObject {
 
     func activeBreaks(at date: Date = Date()) -> [BreakRecord] {
         breakRecords.filter { $0.isActive(at: date) }
+    }
+
+    func isDomainLocked(
+        _ domain: String,
+        at date: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Bool {
+        SundayLockPolicy.isLocked(domain: domain, at: date, calendar: calendar)
+    }
+
+    func websitesForBlocking(
+        at date: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [BlockedWebsite] {
+        var effectiveWebsites = websites
+        guard SundayLockPolicy.isActive(at: date, calendar: calendar) else {
+            return effectiveWebsites
+        }
+
+        for domain in SundayLockPolicy.domains {
+            if let index = effectiveWebsites.firstIndex(where: { $0.domain == domain }) {
+                effectiveWebsites[index].isEnabled = true
+            } else {
+                effectiveWebsites.append(BlockedWebsite(domain: domain))
+            }
+        }
+        return effectiveWebsites
+    }
+
+    func availableBreakDomains(
+        at date: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [String] {
+        websites
+            .filter { $0.isEnabled && !isDomainLocked($0.domain, at: date, calendar: calendar) }
+            .map(\.domain)
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
 
     func endAllBreaks(at date: Date = Date()) {

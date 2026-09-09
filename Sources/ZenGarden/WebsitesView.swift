@@ -66,6 +66,10 @@ struct BlockedWebsiteList: View {
                     }
                 }
             }
+
+            Label("Sunday lock: x.com and twitter.com", systemImage: "lock.fill")
+                .font(GardenTypography.body(10, weight: .medium))
+                .foregroundStyle(GardenTheme.softInk.opacity(0.62))
         }
         .padding(16)
         .background(GardenTheme.warmWhite.opacity(0.92))
@@ -93,6 +97,8 @@ private struct WebsiteRow: View {
     let website: BlockedWebsite
 
     var body: some View {
+        let isLocked = model.settings.isDomainLocked(website.domain)
+
         HStack(spacing: 12) {
             Circle()
                 .fill(website.isEnabled ? GardenTheme.moss : GardenTheme.softInk.opacity(0.24))
@@ -105,15 +111,17 @@ private struct WebsiteRow: View {
             Spacer()
 
             Button {
-                model.settings.setWebsiteEnabled(id: website.id, isEnabled: !website.isEnabled)
+                if !isLocked {
+                    model.settings.setWebsiteEnabled(id: website.id, isEnabled: !website.isEnabled)
+                }
             } label: {
-                Image(systemName: website.isEnabled ? "checkmark.circle.fill" : "circle")
+                Image(systemName: isLocked ? "lock.fill" : (website.isEnabled ? "checkmark.circle.fill" : "circle"))
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(website.isEnabled ? GardenTheme.moss : GardenTheme.softInk.opacity(0.45))
+                    .foregroundStyle((website.isEnabled || isLocked) ? GardenTheme.moss : GardenTheme.softInk.opacity(0.45))
                     .frame(width: 24, height: 24)
             }
             .buttonStyle(.plain)
-            .help(website.isEnabled ? "Disable" : "Enable")
+            .help(isLocked ? "Locked on Sundays" : (website.isEnabled ? "Disable" : "Enable"))
 
             Button {
                 model.settings.deleteWebsite(id: website.id)
@@ -125,6 +133,7 @@ private struct WebsiteRow: View {
             }
             .buttonStyle(.plain)
             .help("Remove \(website.domain)")
+            .disabled(isLocked)
         }
         .padding(.vertical, 6)
     }

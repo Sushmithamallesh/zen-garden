@@ -110,11 +110,24 @@ enum DailyFocusPolicy {
         cutoffMinute: Int,
         calendar: Calendar = .current
     ) -> DateInterval? {
+        let weekday = calendar.component(.weekday, from: date)
+        let dayStart = calendar.startOfDay(for: date)
+
+        if weekday == 7 {
+            return nil
+        }
+
+        if weekday == 1 {
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: dayStart) else {
+                return nil
+            }
+            return DateInterval(start: dayStart, end: nextDay)
+        }
+
         let safeStart = min(max(startMinute, 0), (24 * 60) - 1)
         let safeCutoff = min(max(cutoffMinute, 0), (24 * 60) - 1)
         guard safeStart != safeCutoff else { return nil }
 
-        let dayStart = calendar.startOfDay(for: date)
         let minuteOfDay = calendar.dateComponents([.hour, .minute], from: date)
         let currentMinute = (minuteOfDay.hour ?? 0) * 60 + (minuteOfDay.minute ?? 0)
 
@@ -143,6 +156,26 @@ enum DailyFocusPolicy {
         }
 
         return nil
+    }
+}
+
+enum SundayLockPolicy {
+    static let domains = ["x.com", "twitter.com"]
+
+    static func isActive(at date: Date, calendar: Calendar = .current) -> Bool {
+        calendar.component(.weekday, from: date) == 1
+    }
+
+    static func isLocked(
+        domain input: String,
+        at date: Date,
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard isActive(at: date, calendar: calendar),
+              let domain = DomainMatcher.normalizedDomain(from: input)
+        else { return false }
+
+        return domains.contains(domain)
     }
 }
 
