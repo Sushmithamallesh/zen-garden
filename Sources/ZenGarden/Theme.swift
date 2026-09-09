@@ -168,7 +168,7 @@ struct VermilionButtonStyle: ButtonStyle {
             .padding(.vertical, compact ? 8 : 11)
             .background(configuration.isPressed ? GardenTheme.vermilion.opacity(0.78) : GardenTheme.vermilion)
             .clipShape(Capsule())
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
@@ -185,7 +185,7 @@ struct GardenPrimaryButtonStyle: ButtonStyle {
             .padding(.vertical, compact ? 8 : 10)
             .background(configuration.isPressed ? GardenTheme.matchaShadow : GardenTheme.moss)
             .clipShape(RoundedRectangle(cornerRadius: compact ? 9 : 11, style: .continuous))
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
@@ -205,7 +205,7 @@ struct SoftButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
                     .stroke(GardenTheme.deepPine.opacity(0.12), lineWidth: 1)
             }
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

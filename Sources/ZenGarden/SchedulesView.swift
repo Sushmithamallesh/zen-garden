@@ -3,11 +3,12 @@ import SwiftUI
 
 struct SchedulesView: View {
     @EnvironmentObject private var model: AppModel
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 25) {
-                HStack(alignment: .bottom) {
+                HStack(alignment: .center) {
                     PageHeader(
                         eyebrow: "",
                         title: "Schedules",
@@ -19,7 +20,11 @@ struct SchedulesView: View {
                     } label: {
                         Label("Add schedule", systemImage: "plus")
                     }
-                    .buttonStyle(VermilionButtonStyle(compact: true))
+                    .buttonStyle(SoftButtonStyle())
+
+                    Button("Done") { dismiss() }
+                        .buttonStyle(GardenPrimaryButtonStyle(compact: true))
+                        .keyboardShortcut(.cancelAction)
                 }
 
                 VStack(spacing: 14) {
@@ -129,6 +134,8 @@ private struct ScheduleCard: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(dayName(for: day.1))
+                    .accessibilityValue(isSelected ? "Selected" : "Not selected")
                 }
 
                 Spacer()
@@ -173,5 +180,18 @@ private struct ScheduleCard: View {
     private func minutes(from date: Date) -> Int {
         let components = Calendar.current.dateComponents([.hour, .minute], from: date)
         return (components.hour ?? 0) * 60 + (components.minute ?? 0)
+    }
+
+    private func dayName(for weekday: Int) -> String {
+        switch weekday {
+        case 1: "Sunday"
+        case 2: "Monday"
+        case 3: "Tuesday"
+        case 4: "Wednesday"
+        case 5: "Thursday"
+        case 6: "Friday"
+        case 7: "Saturday"
+        default: "Day"
+        }
     }
 }

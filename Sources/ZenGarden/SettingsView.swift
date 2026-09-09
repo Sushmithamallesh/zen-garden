@@ -3,22 +3,31 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
+    @Environment(\.dismiss) private var dismiss
     @State private var launchAtLogin = LoginItemController.isEnabled
     @State private var launchError: String?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 25) {
-                PageHeader(
-                    eyebrow: "",
-                    title: "Settings",
-                    subtitle: ""
-                )
+                HStack(alignment: .center) {
+                    PageHeader(
+                        eyebrow: "",
+                        title: "Settings",
+                        subtitle: ""
+                    )
+
+                    Spacer()
+
+                    Button("Done") { dismiss() }
+                        .buttonStyle(GardenPrimaryButtonStyle(compact: true))
+                        .keyboardShortcut(.cancelAction)
+                }
 
                 VStack(alignment: .leading, spacing: 18) {
                     settingHeader(symbol: "switch.2", title: "Mac behavior")
 
-                    Toggle(isOn: $launchAtLogin) {
+                    HStack(alignment: .center, spacing: 18) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Open Zen Garden when I log in")
                                 .font(GardenTypography.body(14, weight: .semibold))
@@ -26,9 +35,15 @@ struct SettingsView: View {
                                 .font(GardenTypography.body(11))
                                 .foregroundStyle(GardenTheme.softInk.opacity(0.68))
                         }
+
+                        Spacer()
+
+                        Toggle("", isOn: $launchAtLogin)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .tint(GardenTheme.moss)
+                            .accessibilityLabel("Open Zen Garden when I log in")
                     }
-                    .toggleStyle(.switch)
-                    .tint(GardenTheme.moss)
                     .onChange(of: launchAtLogin) { enabled in
                         do {
                             try LoginItemController.setEnabled(enabled)
@@ -45,17 +60,13 @@ struct SettingsView: View {
                             .foregroundStyle(GardenTheme.vermilion)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .zenCard()
 
                 VStack(alignment: .leading, spacing: 18) {
                     settingHeader(symbol: "sun.horizon", title: "Daily blocking")
 
-                    Toggle(
-                        isOn: Binding(
-                            get: { model.settings.dailyFocusEnabled },
-                            set: { model.settings.setDailyFocusEnabled($0) }
-                        )
-                    ) {
+                    HStack(alignment: .center, spacing: 18) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Use automatic weekday blocking")
                                 .font(GardenTypography.body(14, weight: .semibold))
@@ -63,70 +74,71 @@ struct SettingsView: View {
                                 .font(GardenTypography.body(11))
                                 .foregroundStyle(GardenTheme.softInk.opacity(0.68))
                         }
-                    }
-                    .toggleStyle(.switch)
-                    .tint(GardenTheme.moss)
 
-                    HStack(spacing: 28) {
-                        VStack(alignment: .leading, spacing: 3) {
+                        Spacer()
+
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { model.settings.dailyFocusEnabled },
+                                set: { model.settings.setDailyFocusEnabled($0) }
+                            )
+                        )
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .tint(GardenTheme.moss)
+                        .accessibilityLabel("Use automatic weekday blocking")
+                    }
+
+                    HStack(spacing: 20) {
+                        VStack(alignment: .leading, spacing: 8) {
                             Text("Weekday start")
                                 .font(GardenTypography.body(13, weight: .semibold))
-                            Text("Default: 7:00 AM")
-                                .font(GardenTypography.body(11))
-                                .foregroundStyle(GardenTheme.softInk.opacity(0.64))
+
+                            DatePicker(
+                                "Start time",
+                                selection: Binding(
+                                    get: { date(for: model.settings.dailyStartMinute) },
+                                    set: { model.settings.setDailyStartMinute(minutes(from: $0)) }
+                                ),
+                                displayedComponents: .hourAndMinute
+                            )
+                            .labelsHidden()
+                            .datePickerStyle(.field)
                         }
-                        Spacer()
-                        DatePicker(
-                            "Start time",
-                            selection: Binding(
-                                get: { date(for: model.settings.dailyStartMinute) },
-                                set: { model.settings.setDailyStartMinute(minutes(from: $0)) }
-                            ),
-                            displayedComponents: .hourAndMinute
-                        )
-                        .labelsHidden()
-                        .datePickerStyle(.field)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                         Divider()
-                            .frame(height: 34)
+                            .frame(height: 48)
 
-                        VStack(alignment: .leading, spacing: 3) {
+                        VStack(alignment: .leading, spacing: 8) {
                             Text("Weekday end")
                                 .font(GardenTypography.body(13, weight: .semibold))
-                            Text("Default: 5:00 PM")
-                                .font(GardenTypography.body(11))
-                                .foregroundStyle(GardenTheme.softInk.opacity(0.64))
+
+                            DatePicker(
+                                "End time",
+                                selection: Binding(
+                                    get: { date(for: model.settings.dailyCutoffMinute) },
+                                    set: {
+                                        model.settings.setDailyCutoffMinute(minutes(from: $0))
+                                        model.refreshDigestStatus()
+                                    }
+                                ),
+                                displayedComponents: .hourAndMinute
+                            )
+                            .labelsHidden()
+                            .datePickerStyle(.field)
                         }
-                        Spacer()
-                        DatePicker(
-                            "End time",
-                            selection: Binding(
-                                get: { date(for: model.settings.dailyCutoffMinute) },
-                                set: {
-                                    model.settings.setDailyCutoffMinute(minutes(from: $0))
-                                    model.refreshDigestStatus()
-                                }
-                            ),
-                            displayedComponents: .hourAndMinute
-                        )
-                        .labelsHidden()
-                        .datePickerStyle(.field)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .zenCard()
 
                 VStack(alignment: .leading, spacing: 18) {
                     settingHeader(symbol: "envelope", title: "Daily email")
 
-                    Toggle(
-                        isOn: Binding(
-                            get: { model.settings.digestEnabled },
-                            set: {
-                                model.settings.setDigestEnabled($0)
-                                model.refreshDigestStatus()
-                            }
-                        )
-                    ) {
+                    HStack(alignment: .center, spacing: 18) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Email my break reasons at the cutoff")
                                 .font(GardenTypography.body(14, weight: .semibold))
@@ -134,9 +146,24 @@ struct SettingsView: View {
                                 .font(GardenTypography.body(11))
                                 .foregroundStyle(GardenTheme.softInk.opacity(0.68))
                         }
+
+                        Spacer()
+
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { model.settings.digestEnabled },
+                                set: {
+                                    model.settings.setDigestEnabled($0)
+                                    model.refreshDigestStatus()
+                                }
+                            )
+                        )
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .tint(GardenTheme.moss)
+                        .accessibilityLabel("Email my break reasons at the cutoff")
                     }
-                    .toggleStyle(.switch)
-                    .tint(GardenTheme.moss)
 
                     VStack(alignment: .leading, spacing: 7) {
                         Text("SEND TO")
@@ -174,6 +201,7 @@ struct SettingsView: View {
                         .disabled(model.isSendingDigest || model.settings.digestEmail.isEmpty)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .zenCard()
 
                 VStack(alignment: .leading, spacing: 18) {
@@ -225,6 +253,7 @@ struct SettingsView: View {
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .zenCard()
 
                 VStack(alignment: .leading, spacing: 15) {
@@ -234,6 +263,7 @@ struct SettingsView: View {
                         .foregroundStyle(GardenTheme.softInk.opacity(0.76))
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .zenCard()
 
                 Text(versionText)

@@ -115,7 +115,7 @@ struct DashboardView: View {
             Divider()
                 .overlay(GardenTheme.deepPine.opacity(0.08))
 
-            browserStatus
+            browserStatus(isActive: state.isActive)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .zenCard()
@@ -128,14 +128,25 @@ struct DashboardView: View {
         }
     }
 
-    private var browserStatus: some View {
-        HStack(spacing: 10) {
-            Image(systemName: model.browserBlocker.permissionHelpNeeded ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+    private func browserStatus(isActive: Bool) -> some View {
+        let symbol = model.browserBlocker.permissionHelpNeeded
+            ? "exclamationmark.triangle.fill"
+            : (isActive ? "checkmark.circle.fill" : "circle")
+        let color = model.browserBlocker.permissionHelpNeeded
+            ? GardenTheme.vermilion
+            : (isActive ? GardenTheme.moss : GardenTheme.softInk.opacity(0.42))
+
+        return HStack(spacing: 10) {
+            Image(systemName: symbol)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(model.browserBlocker.permissionHelpNeeded ? GardenTheme.vermilion : GardenTheme.moss)
+                .foregroundStyle(color)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(model.browserBlocker.statusText)
+                Text(
+                    model.browserBlocker.permissionHelpNeeded
+                        ? model.browserBlocker.statusText
+                        : (isActive ? "Browser blocking is on" : "Browser blocking is off")
+                )
                     .font(GardenTypography.body(11, weight: .semibold))
 
                 if model.browserBlocker.permissionHelpNeeded {
@@ -195,9 +206,9 @@ struct MenuBarFocusView: View {
                 HStack(spacing: 11) {
                     ZenGardenMark(size: 30)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(state.isActive ? "Focus active" : "Focus off")
+                        Text("Zen Garden")
                             .font(GardenTypography.body(14, weight: .semibold))
-                        Text(model.browserBlocker.statusText)
+                        Text(state.isActive ? "Focus active · Browser blocking on" : "Focus off")
                             .font(GardenTypography.body(11))
                             .foregroundStyle(.secondary)
                     }
@@ -247,7 +258,7 @@ struct MenuBarFocusView: View {
                         if !today.isEmpty {
                             Text(todaySummary(today, now: context.date))
                                 .font(GardenTypography.body(11))
-                                .foregroundStyle(GardenTheme.softInk.opacity(0.68))
+                                .foregroundStyle(GardenTheme.matchaShadow.opacity(0.82))
                         }
                     } else {
                         Text("Start a focus session")
@@ -267,12 +278,24 @@ struct MenuBarFocusView: View {
                 Divider()
 
                 HStack {
-                    Button("Open Zen Garden") {
+                    Button {
                         openWindow(id: "main")
                         WindowController.showMainWindow()
+                    } label: {
+                        Label("Open Zen Garden", systemImage: "macwindow")
+                            .font(GardenTypography.body(11, weight: .medium))
                     }
+                    .buttonStyle(.plain)
+
                     Spacer()
-                    Button("Quit") { NSApp.terminate(nil) }
+
+                    Button {
+                        NSApp.terminate(nil)
+                    } label: {
+                        Label("Quit", systemImage: "power")
+                            .font(GardenTypography.body(11, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(16)

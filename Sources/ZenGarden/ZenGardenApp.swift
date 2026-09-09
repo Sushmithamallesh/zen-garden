@@ -14,7 +14,7 @@ struct ZenGardenApp: App {
     @StateObject private var model = AppModel()
 
     var body: some Scene {
-        WindowGroup("Zen Garden", id: "main") {
+        Window("Zen Garden", id: "main") {
             RootView()
                 .environmentObject(model)
                 .frame(minWidth: 900, minHeight: 620)

@@ -26,6 +26,8 @@
       margin: 0;
     }
 
+    html { -webkit-font-smoothing: antialiased; }
+
     body {
       display: grid;
       place-items: center;
@@ -85,6 +87,7 @@
       font-weight: 510;
       line-height: 1.05;
       letter-spacing: -.035em;
+      text-wrap: balance;
     }
 
     .message {
@@ -93,6 +96,7 @@
       color: var(--muted);
       font-size: 17px;
       line-height: 1.55;
+      text-wrap: pretty;
     }
 
     .domain {
