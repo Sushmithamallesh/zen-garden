@@ -34,7 +34,22 @@ struct StoreTests {
         let fivePM = calendar.date(byAdding: .hour, value: 17, to: dayStart)!
         let sixPM = calendar.date(byAdding: .hour, value: 18, to: dayStart)!
 
+        let retiredEmailKeys = [
+            "zenGarden.digestEnabled.v1",
+            "zenGarden.digestEmail.v1",
+            "zenGarden.lastDigestDay.v1",
+            "zenGarden.sentDigestDays.v2"
+        ]
+        defaults.set("retired", forKey: retiredEmailKeys[0])
+        defaults.set("old@example.com", forKey: retiredEmailKeys[1])
+        defaults.set("retired", forKey: retiredEmailKeys[2])
+        defaults.set(Data([0]), forKey: retiredEmailKeys[3])
+
         let dailyStore = SettingsStore(defaults: defaults)
+        expect(
+            retiredEmailKeys.allSatisfy { defaults.object(forKey: $0) == nil },
+            "removes preferences from the retired email feature"
+        )
         expect(
             dailyStore.focusState(at: sixFiftyNineAM, calendar: calendar) == .inactive,
             "keeps daily blocking off before 7 AM"
@@ -90,17 +105,6 @@ struct StoreTests {
             !dailyStore.isDomainTemporarilyAllowed("instagram.com", at: fivePM),
             "revokes the exception when focus ends"
         )
-        let nextMorning = calendar.date(byAdding: .hour, value: 8, to: calendar.date(byAdding: .day, value: 1, to: dayStart)!)!
-        expect(
-            dailyStore.pendingDigestDate(at: nextMorning, calendar: calendar) == dayStart,
-            "keeps a missed digest pending after an overnight sleep"
-        )
-        dailyStore.markDigestSent(for: dayStart, calendar: calendar)
-        expect(
-            dailyStore.pendingDigestDate(at: nextMorning, calendar: calendar) == nil,
-            "does not resend a completed daily digest"
-        )
-
         let persistedStore = SettingsStore(defaults: defaults)
         expect(
             persistedStore.breakRecords.count == 1,

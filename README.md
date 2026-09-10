@@ -16,7 +16,6 @@ Release builds are universal and support both Apple Silicon and Intel Macs.
 - A non-bypassable Sunday lock for `x.com` and `twitter.com`
 - Launch at login enabled by default, with an opt-out in Settings
 - Reason-required, site-specific breaks that close again automatically
-- A daily Apple Mail reflection containing every break reason
 - First-class menu-bar controls and Raycast script commands
 - 25, 50, and 90-minute focus sessions
 - Weekly schedules, including overnight schedules
@@ -59,11 +58,6 @@ If a crash report stops in `_RegisterApplication` and names `codex` as the paren
 When focus is active and you first open a blocked site, macOS asks whether Zen Garden may control the active browser. Choose **Allow**. You can review or change this later at:
 
 **System Settings → Privacy & Security → Automation**
-
-Zen Garden uses the same Automation permission to send the optional daily
-reflection through Apple Mail. Add the recipient in Settings, keep Mail signed
-in, and choose **Allow** when macOS asks. If the Mac is asleep at the cutoff,
-the pending reflection is sent after the Mac wakes.
 
 ## Raycast
 

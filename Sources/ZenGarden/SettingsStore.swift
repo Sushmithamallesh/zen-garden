@@ -11,10 +11,6 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var dailyFocusEnabled: Bool
     @Published private(set) var dailyStartMinute: Int
     @Published private(set) var dailyCutoffMinute: Int
-    @Published private(set) var digestEnabled: Bool
-    @Published private(set) var digestEmail: String
-    @Published private(set) var lastDigestDay: String?
-    @Published private(set) var sentDigestDays: Set<String>
 
     private let defaults: UserDefaults
     private let encoder = JSONEncoder()
@@ -30,11 +26,14 @@ final class SettingsStore: ObservableObject {
         static let dailyFocusEnabled = "zenGarden.dailyFocusEnabled.v1"
         static let dailyStartMinute = "zenGarden.dailyStartMinute.v1"
         static let dailyCutoffMinute = "zenGarden.dailyCutoffMinute.v1"
-        static let digestEnabled = "zenGarden.digestEnabled.v1"
-        static let digestEmail = "zenGarden.digestEmail.v1"
-        static let lastDigestDay = "zenGarden.lastDigestDay.v1"
-        static let sentDigestDays = "zenGarden.sentDigestDays.v2"
     }
+
+    private static let retiredEmailPreferenceKeys = [
+        "zenGarden.digestEnabled.v1",
+        "zenGarden.digestEmail.v1",
+        "zenGarden.lastDigestDay.v1",
+        "zenGarden.sentDigestDays.v2"
+    ]
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -73,22 +72,11 @@ final class SettingsStore: ObservableObject {
             ?? DailyFocusPolicy.defaultStartMinute
         dailyCutoffMinute = defaults.object(forKey: Key.dailyCutoffMinute) as? Int
             ?? DailyFocusPolicy.defaultCutoffMinute
-        digestEnabled = defaults.object(forKey: Key.digestEnabled) as? Bool ?? true
-        digestEmail = defaults.string(forKey: Key.digestEmail) ?? ""
-        let storedLastDigestDay = defaults.string(forKey: Key.lastDigestDay)
-        lastDigestDay = storedLastDigestDay
-        if let data = defaults.data(forKey: Key.sentDigestDays),
-           let decoded = try? decoder.decode(Set<String>.self, from: data) {
-            sentDigestDays = decoded
-        } else if let storedLastDigestDay {
-            sentDigestDays = [storedLastDigestDay]
-        } else {
-            sentDigestDays = []
-        }
 
         // Version one allowed an unaccounted global pause. It is intentionally
         // retired now that every exception requires a reason.
         defaults.removeObject(forKey: Key.legacyPausedUntil)
+        Self.retiredEmailPreferenceKeys.forEach { defaults.removeObject(forKey: $0) }
         performMaintenance(at: Date())
     }
 
@@ -258,54 +246,6 @@ final class SettingsStore: ObservableObject {
         defaults.set(dailyCutoffMinute, forKey: Key.dailyCutoffMinute)
     }
 
-    func setDigestEnabled(_ enabled: Bool) {
-        digestEnabled = enabled
-        defaults.set(enabled, forKey: Key.digestEnabled)
-    }
-
-    func setDigestEmail(_ email: String) {
-        digestEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        defaults.set(digestEmail, forKey: Key.digestEmail)
-    }
-
-    func markDigestSent(for date: Date, calendar: Calendar = .current) {
-        let key = Self.dayKey(for: date, calendar: calendar)
-        lastDigestDay = key
-        sentDigestDays.insert(key)
-        defaults.set(lastDigestDay, forKey: Key.lastDigestDay)
-        defaults.set(try? encoder.encode(sentDigestDays), forKey: Key.sentDigestDays)
-    }
-
-    func digestWasSent(for date: Date, calendar: Calendar = .current) -> Bool {
-        sentDigestDays.contains(Self.dayKey(for: date, calendar: calendar))
-    }
-
-    func pendingDigestDate(at now: Date, calendar: Calendar = .current) -> Date? {
-        var candidateDays: [Date] = []
-
-        if let todayCutoff = dailyCutoff(on: now, calendar: calendar),
-           now >= todayCutoff,
-           !digestWasSent(for: now, calendar: calendar) {
-            candidateDays.append(calendar.startOfDay(for: now))
-        }
-
-        for record in breakRecords {
-            let recordDay = calendar.startOfDay(for: record.requestedAt)
-            guard let cutoff = dailyCutoff(on: recordDay, calendar: calendar),
-                  now >= cutoff,
-                  !digestWasSent(for: recordDay, calendar: calendar)
-            else { continue }
-            candidateDays.append(recordDay)
-        }
-
-        return candidateDays.min()
-    }
-
-    func dailyCutoff(on date: Date, calendar: Calendar = .current) -> Date? {
-        let dayStart = calendar.startOfDay(for: date)
-        return calendar.date(byAdding: .minute, value: dailyCutoffMinute, to: dayStart)
-    }
-
     @discardableResult
     func addWebsite(_ input: String) -> Bool {
         guard let domain = DomainMatcher.normalizedDomain(from: input),
@@ -366,26 +306,6 @@ final class SettingsStore: ObservableObject {
             breakRecords = retained
             persistBreakRecords()
         }
-
-        let retainedDayKeys = Set(breakRecords.map { Self.dayKey(for: $0.requestedAt, calendar: .current) })
-        if let ninetyDaysAgo = Calendar.current.date(byAdding: .day, value: -90, to: date) {
-            let oldestKey = Self.dayKey(for: ninetyDaysAgo, calendar: .current)
-            let pruned = sentDigestDays.filter { $0 >= oldestKey || retainedDayKeys.contains($0) }
-            if pruned.count != sentDigestDays.count {
-                sentDigestDays = Set(pruned)
-                defaults.set(try? encoder.encode(sentDigestDays), forKey: Key.sentDigestDays)
-            }
-        }
-    }
-
-    private static func dayKey(for date: Date, calendar: Calendar) -> String {
-        let components = calendar.dateComponents([.year, .month, .day], from: date)
-        return String(
-            format: "%04d-%02d-%02d",
-            components.year ?? 0,
-            components.month ?? 0,
-            components.day ?? 0
-        )
     }
 
     private func persistWebsites() {

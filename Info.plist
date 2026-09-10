@@ -38,7 +38,7 @@
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>NSAppleEventsUsageDescription</key>
-    <string>Zen Garden uses Automation to redirect blocked browser tabs and to send your private daily reflection through Apple Mail.</string>
+    <string>Zen Garden uses Automation to redirect blocked browser tabs.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSPrincipalClass</key>

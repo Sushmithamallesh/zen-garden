@@ -119,10 +119,7 @@ struct SettingsView: View {
                                 "End time",
                                 selection: Binding(
                                     get: { date(for: model.settings.dailyCutoffMinute) },
-                                    set: {
-                                        model.settings.setDailyCutoffMinute(minutes(from: $0))
-                                        model.refreshDigestStatus()
-                                    }
+                                    set: { model.settings.setDailyCutoffMinute(minutes(from: $0)) }
                                 ),
                                 displayedComponents: .hourAndMinute
                             )
@@ -130,75 +127,6 @@ struct SettingsView: View {
                             .datePickerStyle(.field)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .zenCard()
-
-                VStack(alignment: .leading, spacing: 18) {
-                    settingHeader(symbol: "envelope", title: "Daily email")
-
-                    HStack(alignment: .center, spacing: 18) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Email my break reasons at the cutoff")
-                                .font(GardenTypography.body(14, weight: .semibold))
-                            Text("Uses Apple Mail. Missed emails send after the Mac wakes.")
-                                .font(GardenTypography.body(11))
-                                .foregroundStyle(GardenTheme.softInk.opacity(0.68))
-                        }
-
-                        Spacer()
-
-                        Toggle(
-                            "",
-                            isOn: Binding(
-                                get: { model.settings.digestEnabled },
-                                set: {
-                                    model.settings.setDigestEnabled($0)
-                                    model.refreshDigestStatus()
-                                }
-                            )
-                        )
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .tint(GardenTheme.moss)
-                        .accessibilityLabel("Email my break reasons at the cutoff")
-                    }
-
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text("SEND TO")
-                            .font(GardenTypography.label(9, weight: .bold))
-                            .tracking(1.1)
-                            .foregroundStyle(GardenTheme.softInk.opacity(0.66))
-                        TextField(
-                            "you@example.com",
-                            text: Binding(
-                                get: { model.settings.digestEmail },
-                                set: {
-                                    model.settings.setDigestEmail($0)
-                                    model.refreshDigestStatus()
-                                }
-                            )
-                        )
-                        .textFieldStyle(.plain)
-                        .font(GardenTypography.body(14))
-                        .padding(.horizontal, 13)
-                        .padding(.vertical, 10)
-                        .background(GardenTheme.ink.opacity(0.05))
-                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-                    }
-
-                    HStack {
-                        Text(model.digestStatus)
-                            .font(GardenTypography.body(11))
-                            .foregroundStyle(GardenTheme.softInk.opacity(0.72))
-                            .lineLimit(2)
-                        Spacer()
-                        Button(model.isSendingDigest ? "Sending…" : "Send today now") {
-                            Task { await model.sendTodayDigest() }
-                        }
-                        .buttonStyle(SoftButtonStyle())
-                        .disabled(model.isSendingDigest || model.settings.digestEmail.isEmpty)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -222,7 +150,7 @@ struct SettingsView: View {
                         .buttonStyle(SoftButtonStyle())
                     }
 
-                    Text("macOS requires Automation access to redirect browser tabs and send email through Apple Mail. Manage access in Privacy & Security → Automation.")
+                    Text("macOS requires Automation access to redirect blocked browser tabs. Manage access in Privacy & Security → Automation.")
                         .font(GardenTypography.body(13))
                         .foregroundStyle(GardenTheme.softInk.opacity(0.76))
                         .fixedSize(horizontal: false, vertical: true)
@@ -258,7 +186,7 @@ struct SettingsView: View {
 
                 VStack(alignment: .leading, spacing: 15) {
                     settingHeader(symbol: "leaf", title: "Privacy")
-                    Text("No account or analytics. Blocked sites, access reasons, and schedules are stored locally. Access reasons are shared only with Apple Mail when an email is sent.")
+                    Text("No account or analytics. Blocked sites, access reasons, and schedules stay on this Mac.")
                         .font(GardenTypography.body(13))
                         .foregroundStyle(GardenTheme.softInk.opacity(0.76))
                         .fixedSize(horizontal: false, vertical: true)

@@ -47,7 +47,7 @@ struct BreakRequestView: View {
 
             VStack(alignment: .leading, spacing: 7) {
                 fieldLabel("Reason")
-                TextField("Required. Included in today’s email.", text: $reason, axis: .vertical)
+                TextField("Required.", text: $reason, axis: .vertical)
                     .lineLimit(2...4)
                     .focused($reasonIsFocused)
                     .textFieldStyle(.plain)
