@@ -1,117 +1,147 @@
 # Zen Garden
 
-Zen Garden is a local-first macOS website blocker with a quiet Japandi-inspired interface. It blocks selected domains in supported browsers during manual focus sessions or recurring schedules.
+<p align="center">
+  <img src="Sources/ZenGarden/Resources/ZenGardenHero.png" alt="Zen Garden landscape" width="820">
+</p>
+
+<p align="center">
+  A calm, local-first website blocker for macOS.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Sushmithamallesh/zen-garden/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Sushmithamallesh/zen-garden/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-6e8033"></a>
+  <img alt="macOS 13 or newer" src="https://img.shields.io/badge/macOS-13%2B-6e8033">
+</p>
+
+Zen Garden helps you stay away from distracting websites while you work. It
+lives in the menu bar, blocks selected domains in your browser, and requires a
+written reason before granting temporary access.
+
+Everything runs on your Mac. There is no account, subscription, analytics
+service, or remote server.
 
 ## Download
 
-Download the newest macOS build from [GitHub Releases](https://github.com/Sushmithamallesh/zen-garden/releases). The DMG is the simplest option: open it and drag Zen Garden to Applications.
+**[Download Zen Garden v0.3.1 for macOS (.dmg)](https://github.com/Sushmithamallesh/zen-garden/releases/download/v0.3.1/Zen-Garden.dmg)**
 
-Preview releases are ad-hoc signed while Apple Developer signing is being set up. On the first launch of a preview, Control-click **Zen Garden**, choose **Open**, then confirm **Open**. Signed and notarized releases will open normally.
+The release is universal and works on Apple silicon and Intel Macs running
+macOS 13 or newer. Open the DMG, then drag **Zen Garden** into **Applications**.
 
-Release builds are universal and support both Apple Silicon and Intel Macs.
+> [!IMPORTANT]
+> v0.3.1 is a public preview. It is ad-hoc signed, not yet signed with an Apple
+> Developer ID or notarized by Apple. macOS will therefore show a security
+> warning. If you prefer not to override Gatekeeper, build from source or wait
+> for the notarized v1 release.
 
-## What is included
+To open this preview:
 
-- Automatic blocking from 7:00 AM to 5:00 PM Monday–Friday, off Saturday, and all day Sunday
-- A non-bypassable Sunday lock for `x.com` and `twitter.com`
-- Launch at login enabled by default, with an opt-out in Settings
-- Reason-required, site-specific breaks that close again automatically
-- First-class menu-bar controls and Raycast script commands
-- 25, 50, and 90-minute focus sessions
-- Weekly schedules, including overnight schedules
+1. Try to open **Zen Garden** from Applications once.
+2. Open **System Settings → Privacy & Security**.
+3. Scroll to Security and choose **Open Anyway**, then confirm.
+
+Apple explains this override and its risks in
+[Open an app by overriding security settings](https://support.apple.com/guide/mac-help/open-an-app-by-overriding-security-settings-mh40617/mac).
+
+See the [release page](https://github.com/Sushmithamallesh/zen-garden/releases/tag/v0.3.1)
+for the ZIP alternative, checksums, and release notes.
+
+## Features
+
+- Menu-bar controls for starting focus, requesting a break, and resuming blocking
+- Reason-required, site-specific temporary access
+- Adjustable weekday blocking, initially set to 7:00 AM–5:00 PM
+- Saturday off and all-day Sunday focus by default
+- A Sunday rule that refuses temporary access to `x.com` and `twitter.com`
+- 25, 50, and 90-minute manual sessions
+- Custom weekly and overnight schedules
 - Editable website blocklist with subdomain matching
-- Safari, Chrome, Brave, Edge, Arc, and Opera support
-- A local zen-style block page
-- No account, server, analytics, or browsing-history storage
+- Safari, Arc, Chrome, Brave, Edge, and Opera support
+- Raycast commands for the primary actions
+- Launch at login, enabled by default and removable in Settings
+- A local block page matching the app’s garden design
 
-## Requirements
+## How it works
 
-- macOS 13 or newer
-- Swift 6 toolchain or Xcode 16+
+During an active focus session, Zen Garden reads the URL of the active tab in
+the frontmost supported browser. If the domain matches the enabled blocklist,
+the app redirects that tab to its bundled local block page.
 
-## Build a local `.app`
+Zen Garden uses macOS Automation for this browser interaction. The first time
+it needs access to a browser, macOS asks you to allow it. You can inspect or
+revoke that permission at **System Settings → Privacy & Security → Automation**.
 
-From this folder:
+It does not request Screen Recording or Accessibility access. See
+[Privacy](PRIVACY.md) for exactly what is stored and why.
+
+## Why trust it?
+
+- The complete source and release workflow are public.
+- The app has no third-party code dependencies.
+- CI builds and tests every change on `main`.
+- Release downloads are built by GitHub Actions and include SHA-256 checksums.
+- The only app entitlement is permission to send Apple Events to supported browsers.
+- Website lists, schedules, and break reasons remain on your Mac.
+
+To verify the DMG after downloading `SHA256SUMS.txt` from the release:
 
 ```sh
-chmod +x scripts/build-app.sh
+grep 'Zen-Garden.dmg' SHA256SUMS.txt | shasum -a 256 -c -
+```
+
+Developer ID signing and Apple notarization are the remaining requirements for
+a normal one-click public installation. Apple recommends both for apps
+distributed outside the Mac App Store; the release workflow already supports
+them once the credentials are configured.
+
+## Browser support
+
+| Browser | Status |
+| --- | --- |
+| Safari | Supported |
+| Arc | Supported |
+| Google Chrome | Supported |
+| Brave | Supported |
+| Microsoft Edge | Supported |
+| Opera | Supported |
+| Firefox | Not supported yet |
+
+Firefox does not expose the Apple Events tab interface used by this release.
+
+## Raycast
+
+The [`raycast`](raycast) folder contains **Request a Break**, **Resume
+Blocking**, and **Open Zen Garden** Script Commands. Add that directory under
+**Raycast Settings → Extensions → Add Directories** after installing and
+launching Zen Garden once.
+
+## Build from source
+
+Install Xcode 16 or a Swift 6 toolchain, then run:
+
+```sh
+git clone https://github.com/Sushmithamallesh/zen-garden.git
+cd zen-garden
+./scripts/test-core.sh
 ./scripts/build-app.sh
 open "dist/Zen Garden.app"
 ```
 
-The build script also handles the split Command Line Tools SDK configuration
-currently present on this Mac. Installing full Xcode later is still recommended
-for editing, previews, debugging, and release signing.
+You can also open `Package.swift` in Xcode and run the `ZenGarden` scheme.
 
-The script creates an ad-hoc-signed local build at `dist/Zen Garden.app`. No Apple Developer membership or App Store publication is required to run it on your own Mac.
+## Limits
 
-For the most dependable launch-at-login behavior, copy the app to `/Applications` before enabling that option.
+Zen Garden is a behavioral focus tool, not tamper-proof parental-control or
+security software. Blocking stops if you quit the app, revoke Automation
+permission, or use an unsupported browser. It does not currently update itself;
+download new versions from GitHub Releases.
 
-### Launch troubleshooting
+## Contributing
 
-Launch the `.app` with Finder or the `open` command from your normal Terminal session. Do not run `Contents/MacOS/ZenGarden` directly: GUI apps need to be started through macOS Launch Services.
-
-If a crash report stops in `_RegisterApplication` and names `codex` as the parent process, the app was started inside Codex's restricted execution environment. Leave the built app in `dist`, then open it yourself from Finder or run the `open` command above in Terminal. This is a launch-environment error; the app has not reached Zen Garden's code yet.
-
-## Browser permission
-
-When focus is active and you first open a blocked site, macOS asks whether Zen Garden may control the active browser. Choose **Allow**. You can review or change this later at:
-
-**System Settings → Privacy & Security → Automation**
-
-## Raycast
-
-The `raycast` folder contains three Script Commands: **Request a Break**,
-**Resume Blocking**, and **Open Zen Garden**.
-
-In Raycast, open **Settings → Extensions → Add Directories** and select the
-repository's `raycast` folder. The commands then appear in Raycast search. The
-break command opens Zen Garden's small reason form directly; it does not open
-the full settings window.
-
-If you rebuild the app and macOS no longer presents the permission correctly, remove the old Automation permission and launch the new build again.
-
-Use **Settings → Browser permission → Check browsers** to see which installed
-browsers are connected and which still need Automation permission.
-
-## Develop in Xcode
-
-Install Xcode, then open `Package.swift`. Xcode recognizes the Swift package as a macOS executable project. Select the `ZenGarden` scheme and press **Run**.
-
-The repository intentionally avoids external packages so the project can be built from the command line or Xcode without dependency setup.
-
-Run the core domain and scheduling tests with:
-
-```sh
-chmod +x scripts/test-core.sh
-./scripts/test-core.sh
-```
-
-## How blocking works
-
-While focus is active, Zen Garden checks only the active tab of the frontmost
-supported browser. If its host matches an enabled blocked domain, Zen Garden
-asks the browser through Apple Events to replace the page with the local focus
-page. Every redirect is read back and verified. Chromium-family browsers use a
-self-contained page, with a safe blank-page fallback if a browser refuses the
-styled destination.
-
-The current adapters cover Safari, Arc, Google Chrome, Brave, Microsoft Edge,
-and Opera. Firefox does not expose the tab automation interface used by this
-version and is therefore not currently supported.
-
-This is a behavioral boundary, not a security product. A user can still disable Automation permission, quit Zen Garden, or use an unsupported browser. A later version can replace this layer with browser extensions or a Network Extension for stronger enforcement.
-
-## Distribution
-
-GitHub Actions creates a universal DMG, ZIP, and SHA-256 checksum file whenever a version tag such as `v0.3.0` is pushed. Without Apple credentials it publishes an ad-hoc-signed prerelease. With a Developer ID certificate and notarization credentials configured, it publishes a normal signed release.
-
-See [Releasing](docs/RELEASING.md) for the versioning, signing, and publishing steps. A website can link to the Releases page now; after the first signed release it can use this stable direct-download URL:
-
-```text
-https://github.com/Sushmithamallesh/zen-garden/releases/latest/download/Zen-Garden.dmg
-```
+Bug reports and focused improvements are welcome. Read
+[CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Please report
+security issues privately according to [SECURITY.md](SECURITY.md).
 
 ## License
 
-MIT. You may use, modify, and redistribute the project freely while preserving the license notice.
+Zen Garden is available under the [MIT License](LICENSE).

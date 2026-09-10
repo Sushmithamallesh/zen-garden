@@ -14,8 +14,8 @@ Zen Garden ships directly through GitHub Releases. A release contains:
 4. Create a tag matching the app version and push it:
 
    ```sh
-   git tag v0.3.0
-   git push origin v0.3.0
+   git tag v0.3.1
+   git push origin v0.3.1
    ```
 
 The release workflow tests the app, builds a universal macOS bundle, packages the downloads, and publishes them to GitHub.
@@ -34,7 +34,7 @@ For a normal public download, join the Apple Developer Program, create a **Devel
 | `APPLE_TEAM_ID` | Apple Developer Team ID |
 | `APPLE_APP_PASSWORD` | App-specific password for the Apple ID |
 
-With all five values present, the workflow signs with hardened runtime, submits the app to Apple's notary service, staples the result, verifies it with Gatekeeper, and publishes a normal release.
+With all five values present, the workflow signs with hardened runtime, submits the app to Apple's notary service, staples the result, verifies it with Gatekeeper, and publishes a normal release. Until then, releases are clearly marked as previews because users must manually override Gatekeeper to open them.
 
 ## Website download link
 
