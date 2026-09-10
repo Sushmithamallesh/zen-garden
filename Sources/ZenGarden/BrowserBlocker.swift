@@ -380,7 +380,7 @@ final class BrowserBlocker: ObservableObject {
         if browser.scriptingStyle != .safari,
            let html = try? String(contentsOf: resource, encoding: .utf8) {
             return BlockPageDestination.inlinePage(
-                html: embeddedGardenArtwork(in: html),
+                html: embeddedBlockPageResources(in: html),
                 domain: domain
             )
         }
@@ -388,15 +388,33 @@ final class BrowserBlocker: ObservableObject {
         return "\(resource.absoluteString)#\(domain)"
     }
 
-    private func embeddedGardenArtwork(in html: String) -> String {
-        guard let artworkURL = AppResources.url(
+    private func embeddedBlockPageResources(in html: String) -> String {
+        var embeddedHTML = html
+
+        if let artworkURL = AppResources.url(
             forResource: "ZenGardenHeroBrowser",
             withExtension: "jpg"
         ),
-        let artworkData = try? Data(contentsOf: artworkURL)
-        else { return html }
+        let artworkData = try? Data(contentsOf: artworkURL) {
+            let dataURL = "data:image/jpeg;base64,\(artworkData.base64EncodedString())"
+            embeddedHTML = embeddedHTML.replacingOccurrences(
+                of: "ZenGardenHeroBrowser.jpg",
+                with: dataURL
+            )
+        }
 
-        let dataURL = "data:image/jpeg;base64,\(artworkData.base64EncodedString())"
-        return html.replacingOccurrences(of: "ZenGardenHeroBrowser.jpg", with: dataURL)
+        if let fontURL = AppResources.url(
+            forResource: "InterVariable",
+            withExtension: "woff2"
+        ),
+        let fontData = try? Data(contentsOf: fontURL) {
+            let dataURL = "data:font/woff2;base64,\(fontData.base64EncodedString())"
+            embeddedHTML = embeddedHTML.replacingOccurrences(
+                of: "InterVariable.woff2",
+                with: dataURL
+            )
+        }
+
+        return embeddedHTML
     }
 }

@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 import SwiftUI
 
 enum GardenTheme {
@@ -84,16 +85,37 @@ enum GardenTheme {
 }
 
 enum GardenTypography {
+    private static let didRegisterInter: Bool = {
+        guard let fontURL = AppResources.url(
+            forResource: "InterVariable",
+            withExtension: "ttf"
+        ) else { return false }
+
+        var registrationError: Unmanaged<CFError>?
+        return CTFontManagerRegisterFontsForURL(
+            fontURL as CFURL,
+            .process,
+            &registrationError
+        )
+    }()
+
     static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .default)
+        inter(size, weight: weight)
     }
 
     static func body(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .default)
+        inter(size, weight: weight)
     }
 
     static func label(_ size: CGFloat, weight: Font.Weight = .medium) -> Font {
-        .system(size: size, weight: weight, design: .default)
+        inter(size, weight: weight)
+    }
+
+    private static func inter(_ size: CGFloat, weight: Font.Weight) -> Font {
+        guard didRegisterInter else {
+            return .system(size: size, weight: weight, design: .default)
+        }
+        return .custom("InterVariable", fixedSize: size).weight(weight)
     }
 }
 
