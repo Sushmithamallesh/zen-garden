@@ -74,7 +74,7 @@ struct PageHeader: View {
             if !subtitle.isEmpty {
                 Text(subtitle)
                     .font(GardenTypography.body(14))
-                    .foregroundStyle(GardenTheme.softInk.opacity(0.8))
+                    .foregroundStyle(GardenTheme.secondaryText)
                     .lineSpacing(2)
             }
         }

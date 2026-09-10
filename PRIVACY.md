@@ -10,7 +10,7 @@ Zen Garden stores the following in your macOS user preferences:
 - your blocked website list;
 - focus schedules and daily blocking times;
 - the current manual-session boundary; and
-- temporary-access requests, including their domains, durations, and reasons.
+- temporary-access records, including their domains, durations, and reasons.
 
 Access-request records are automatically removed after 90 days. Zen Garden
 does not send this information anywhere.

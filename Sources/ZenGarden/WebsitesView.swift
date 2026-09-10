@@ -21,15 +21,26 @@ struct BlockedWebsiteList: View {
                     .foregroundStyle(GardenTheme.matchaShadow)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(GardenTheme.matchaPale.opacity(0.48))
+                    .background(GardenTheme.matchaPale.opacity(0.30))
                     .clipShape(Capsule())
             }
 
             HStack(spacing: 8) {
-                TextField("Add a website, e.g. reddit.com", text: $newWebsite)
-                    .textFieldStyle(.plain)
-                    .font(GardenTypography.body(13))
-                    .padding(.horizontal, 12)
+                ZStack(alignment: .leading) {
+                    if newWebsite.isEmpty {
+                        Text("Add a website, e.g. reddit.com")
+                            .font(GardenTypography.body(13))
+                            .foregroundStyle(GardenTheme.secondaryText)
+                            .padding(.horizontal, 12)
+                            .allowsHitTesting(false)
+                    }
+
+                    TextField("", text: $newWebsite)
+                        .textFieldStyle(.plain)
+                        .font(GardenTypography.body(13))
+                        .padding(.horizontal, 12)
+                        .accessibilityLabel("Add website")
+                }
                     .frame(height: 38)
                     .background(GardenTheme.ricePaper.opacity(0.46))
                     .foregroundStyle(GardenTheme.ink)
@@ -60,9 +71,9 @@ struct BlockedWebsiteList: View {
             }
 
             if displayedWebsites.isEmpty {
-                Text("No blocked websites.")
+                Text("No websites added.")
                     .font(GardenTypography.body(13))
-                    .foregroundStyle(GardenTheme.softInk.opacity(0.62))
+                    .foregroundStyle(GardenTheme.secondaryText)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
             } else {
@@ -86,9 +97,9 @@ struct BlockedWebsiteList: View {
             }
 
             if SundayLockPolicy.isActive(at: Date()) {
-                Label("Twitter is locked for Sunday", systemImage: "lock.fill")
+                Label("Twitter stays blocked on Sundays", systemImage: "lock.fill")
                     .font(GardenTypography.body(10, weight: .medium))
-                    .foregroundStyle(GardenTheme.softInk.opacity(0.62))
+                    .foregroundStyle(GardenTheme.secondaryText)
             }
         }
         .zenCard()
@@ -101,7 +112,7 @@ struct BlockedWebsiteList: View {
             newWebsite = ""
             validationMessage = nil
         } else {
-            validationMessage = "Enter a valid website that is not already in the list."
+            validationMessage = "Enter a valid website that isn’t already listed."
         }
     }
 }
@@ -117,7 +128,7 @@ private struct WebsiteRow: View {
         HStack(spacing: 11) {
             Text(website.domain)
                 .font(GardenTypography.body(13, weight: .medium))
-                .foregroundStyle(website.isEnabled ? GardenTheme.ink : GardenTheme.softInk.opacity(0.62))
+                .foregroundStyle(website.isEnabled ? GardenTheme.ink : GardenTheme.secondaryText)
 
             Spacer()
 
@@ -128,7 +139,7 @@ private struct WebsiteRow: View {
             } label: {
                 Image(systemName: isLocked ? "lock.fill" : (website.isEnabled ? "checkmark.circle.fill" : "circle"))
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle((website.isEnabled || isLocked) ? GardenTheme.moss : GardenTheme.softInk.opacity(0.45))
+                    .foregroundStyle((website.isEnabled || isLocked) ? GardenTheme.moss : GardenTheme.secondaryText)
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)
@@ -139,7 +150,7 @@ private struct WebsiteRow: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(GardenTheme.softInk.opacity(isHovering ? 0.68 : 0.18))
+                    .foregroundStyle(GardenTheme.secondaryText.opacity(isHovering ? 1 : 0.72))
                     .frame(width: 36, height: 36)
             }
             .buttonStyle(.plain)

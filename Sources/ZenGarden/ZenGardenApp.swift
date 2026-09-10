@@ -20,8 +20,13 @@ struct ZenGardenApp: App {
                 .frame(minWidth: 900, minHeight: 620)
         }
         .defaultSize(width: 980, height: 680)
+        .commands {
+            CommandGroup(replacing: .appTermination) {
+                EmptyView()
+            }
+        }
 
-        Window("Request a Break", id: "break-request") {
+        Window("Unblock a Website", id: "break-request") {
             BreakRequestWindow()
                 .environmentObject(model)
         }

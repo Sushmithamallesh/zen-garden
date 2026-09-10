@@ -16,7 +16,7 @@
 
 Zen Garden helps you stay away from distracting websites while you work. It
 lives in the menu bar, blocks selected domains in your browser, and requires a
-written reason before granting temporary access.
+written reason before briefly unblocking one.
 
 Everything runs on your Mac. There is no account, subscription, analytics
 service, or remote server.
@@ -48,8 +48,8 @@ for the ZIP alternative, checksums, and release notes.
 
 ## Features
 
-- Menu-bar controls for starting focus, requesting a break, and resuming blocking
-- Reason-required, site-specific temporary access
+- Menu-bar controls for starting focus, unblocking one website, and resuming blocking
+- Reason-required, time-limited website access
 - Adjustable weekday blocking, initially set to 7:00 AM–5:00 PM
 - Saturday off and all-day Sunday focus by default
 - A Sunday rule that refuses temporary access to `x.com` and `twitter.com`
@@ -81,7 +81,7 @@ It does not request Screen Recording or Accessibility access. See
 - CI builds and tests every change on `main`.
 - Release downloads are built by GitHub Actions and include SHA-256 checksums.
 - The only app entitlement is permission to send Apple Events to supported browsers.
-- Website lists, schedules, and break reasons remain on your Mac.
+- Website lists, schedules, and access reasons remain on your Mac.
 
 To verify the DMG after downloading `SHA256SUMS.txt` from the release:
 
@@ -110,7 +110,7 @@ Firefox does not expose the Apple Events tab interface used by this release.
 
 ## Raycast
 
-The [`raycast`](raycast) folder contains **Request a Break**, **Resume
+The [`raycast`](raycast) folder contains **Unblock a Website**, **Resume
 Blocking**, and **Open Zen Garden** Script Commands. Add that directory under
 **Raycast Settings → Extensions → Add Directories** after installing and
 launching Zen Garden once.

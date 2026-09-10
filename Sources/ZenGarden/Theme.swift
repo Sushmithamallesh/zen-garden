@@ -2,21 +2,85 @@ import AppKit
 import SwiftUI
 
 enum GardenTheme {
-    static let ricePaper = Color(red: 0.96, green: 0.94, blue: 0.88)
-    static let warmWhite = Color(red: 0.995, green: 0.985, blue: 0.95)
-    static let ink = Color(red: 0.16, green: 0.20, blue: 0.07)
-    static let softInk = Color(red: 0.29, green: 0.34, blue: 0.17)
-    static let vermilion = Color(red: 0.78, green: 0.12, blue: 0.075)
-    static let softRed = Color(red: 0.91, green: 0.37, blue: 0.27)
-    static let matcha = Color(red: 0.43, green: 0.50, blue: 0.20)
-    static let matchaLight = Color(red: 0.67, green: 0.72, blue: 0.40)
-    static let matchaPale = Color(red: 0.86, green: 0.89, blue: 0.70)
-    static let matchaShadow = Color(red: 0.27, green: 0.33, blue: 0.12)
-    static let earthRed = Color(red: 0.64, green: 0.27, blue: 0.18)
+    static let ricePaper = adaptive(
+        light: rgb(0.96, 0.94, 0.88),
+        dark: rgb(0.067, 0.078, 0.051)
+    )
+    static let warmWhite = adaptive(
+        light: rgb(0.995, 0.985, 0.95),
+        dark: rgb(0.106, 0.125, 0.082)
+    )
+    static let ink = adaptive(
+        light: rgb(0.16, 0.20, 0.07),
+        dark: rgb(0.953, 0.941, 0.886)
+    )
+    static let softInk = adaptive(
+        light: rgb(0.29, 0.34, 0.17),
+        dark: rgb(0.741, 0.769, 0.651)
+    )
+    static let secondaryText = adaptive(
+        light: rgb(0.40, 0.44, 0.29),
+        dark: rgb(0.592, 0.627, 0.525)
+    )
+    static let vermilion = adaptive(
+        light: rgb(0.78, 0.12, 0.075),
+        dark: rgb(0.941, 0.412, 0.329)
+    )
+    static let softRed = adaptive(
+        light: rgb(0.91, 0.37, 0.27),
+        dark: rgb(0.949, 0.541, 0.439)
+    )
+    static let matcha = adaptive(
+        light: rgb(0.408, 0.475, 0.176),
+        dark: rgb(0.388, 0.463, 0.173)
+    )
+    static let matchaLight = adaptive(
+        light: rgb(0.67, 0.72, 0.40),
+        dark: rgb(0.592, 0.667, 0.373)
+    )
+    static let matchaPale = adaptive(
+        light: rgb(0.86, 0.89, 0.70),
+        dark: rgb(0.686, 0.761, 0.451)
+    )
+    static let matchaShadow = adaptive(
+        light: rgb(0.27, 0.33, 0.12),
+        dark: rgb(0.769, 0.816, 0.549)
+    )
+    static let earthRed = adaptive(
+        light: rgb(0.64, 0.27, 0.18),
+        dark: rgb(0.831, 0.424, 0.333)
+    )
+    static let elevatedEdge = adaptive(
+        light: rgb(1, 1, 1, alpha: 0.68),
+        dark: rgb(1, 1, 1, alpha: 0.10)
+    )
+    static let elevationShadow = adaptive(
+        light: rgb(0.27, 0.33, 0.12),
+        dark: rgb(0, 0, 0)
+    )
     static let moss = matcha
+    static let mossPressed = adaptive(
+        light: rgb(0.357, 0.416, 0.141),
+        dark: rgb(0.337, 0.40, 0.133)
+    )
     static let leaf = matchaLight
     static let rakeLine = vermilion
     static let deepPine = matcha
+
+    private static func adaptive(light: NSColor, dark: NSColor) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+        })
+    }
+
+    private static func rgb(
+        _ red: CGFloat,
+        _ green: CGFloat,
+        _ blue: CGFloat,
+        alpha: CGFloat = 1
+    ) -> NSColor {
+        NSColor(srgbRed: red, green: green, blue: blue, alpha: alpha)
+    }
 }
 
 enum GardenTypography {
@@ -34,6 +98,9 @@ enum GardenTypography {
 }
 
 struct ZenGardenBackdrop: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -45,22 +112,44 @@ struct ZenGardenBackdrop: View {
                         .scaledToFill()
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .clipped()
+                        .saturation(colorScheme == .dark ? 0.72 : 1)
+                        .brightness(colorScheme == .dark ? -0.34 : 0)
                 } else {
                     GardenFallbackBackdrop()
                 }
 
                 LinearGradient(
-                    colors: [
-                        GardenTheme.warmWhite.opacity(0.64),
-                        GardenTheme.ricePaper.opacity(0.18),
-                        GardenTheme.deepPine.opacity(0.08)
-                    ],
+                    colors: backdropOverlayColors,
                     startPoint: .top,
                     endPoint: .bottom
                 )
             }
         }
         .ignoresSafeArea()
+    }
+
+    private var backdropOverlayColors: [Color] {
+        if reduceTransparency {
+            return [
+                GardenTheme.ricePaper.opacity(0.92),
+                GardenTheme.ricePaper.opacity(0.86),
+                GardenTheme.ricePaper.opacity(0.90)
+            ]
+        }
+
+        if colorScheme == .dark {
+            return [
+                GardenTheme.ricePaper.opacity(0.70),
+                GardenTheme.ricePaper.opacity(0.34),
+                Color.black.opacity(0.42)
+            ]
+        }
+
+        return [
+            GardenTheme.warmWhite.opacity(0.64),
+            GardenTheme.ricePaper.opacity(0.18),
+            GardenTheme.deepPine.opacity(0.08)
+        ]
     }
 }
 
@@ -129,7 +218,7 @@ struct ZenGardenMark: View {
         .clipShape(RoundedRectangle(cornerRadius: size * 0.24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
-                .stroke(GardenTheme.matchaShadow.opacity(0.12), lineWidth: max(0.5, size * 0.018))
+                .stroke(GardenTheme.elevatedEdge, lineWidth: max(0.5, size * 0.018))
         }
         .drawingGroup()
     }
@@ -143,33 +232,16 @@ struct ZenCardModifier: ViewModifier {
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.68), lineWidth: 1)
+                    .stroke(GardenTheme.elevatedEdge, lineWidth: 1)
             }
-            .shadow(color: GardenTheme.matchaShadow.opacity(0.055), radius: 2, y: 1)
-            .shadow(color: GardenTheme.matchaShadow.opacity(0.075), radius: 18, y: 8)
+            .shadow(color: GardenTheme.elevationShadow.opacity(0.09), radius: 2, y: 1)
+            .shadow(color: GardenTheme.elevationShadow.opacity(0.13), radius: 18, y: 8)
     }
 }
 
 extension View {
     func zenCard() -> some View {
         modifier(ZenCardModifier())
-    }
-}
-
-struct VermilionButtonStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    var compact = false
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(GardenTypography.label(compact ? 13 : 15, weight: .semibold))
-            .foregroundStyle(Color.white)
-            .padding(.horizontal, compact ? 15 : 20)
-            .padding(.vertical, compact ? 8 : 11)
-            .background(configuration.isPressed ? GardenTheme.vermilion.opacity(0.78) : GardenTheme.vermilion)
-            .clipShape(Capsule())
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
@@ -183,7 +255,7 @@ struct GardenPrimaryButtonStyle: ButtonStyle {
             .foregroundStyle(Color.white)
             .padding(.horizontal, compact ? 14 : 18)
             .padding(.vertical, compact ? 8 : 10)
-            .background(configuration.isPressed ? GardenTheme.matchaShadow : GardenTheme.moss)
+            .background(configuration.isPressed ? GardenTheme.mossPressed : GardenTheme.moss)
             .clipShape(RoundedRectangle(cornerRadius: compact ? 9 : 11, style: .continuous))
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)

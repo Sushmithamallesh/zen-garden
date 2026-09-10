@@ -6,13 +6,13 @@
   <title>Zen Garden · Blocked</title>
   <style>
     :root {
-      color-scheme: light;
+      color-scheme: light dark;
       --paper: #f5f0e2;
       --paper-light: #fffaf0;
       --ink: #0e281a;
       --muted: #385043;
-      --vermilion: #c51f13;
-      --moss: #6f8033;
+      --moss: #68792d;
+      --accent-ink: #45541f;
       --pine: #6f8033;
       --matcha-light: #aab866;
       --rake-line: rgba(197, 31, 19, 0.18);
@@ -65,7 +65,7 @@
       align-items: center;
       gap: 9px;
       margin: 0 0 14px;
-      color: var(--vermilion);
+      color: var(--accent-ink);
       font-size: 11px;
       font-weight: 750;
       letter-spacing: .19em;
@@ -105,9 +105,42 @@
       padding: 9px 14px;
       border-radius: 999px;
       background: rgba(88, 107, 77, .10);
-      color: var(--moss);
+      color: var(--accent-ink);
       font-size: 13px;
       font-weight: 650;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #11140d;
+        --paper-light: #1b2015;
+        --ink: #f3f0e2;
+        --muted: #bdc4a6;
+        --moss: #97aa5f;
+        --accent-ink: #c4d08c;
+        --pine: #63762c;
+        --matcha-light: #afc273;
+        --rake-line: rgba(240, 105, 84, .20);
+      }
+
+      body {
+        background-image:
+          linear-gradient(
+            to bottom,
+            rgba(17, 20, 13, .72),
+            rgba(17, 20, 13, .42),
+            rgba(0, 0, 0, .50)
+          ),
+          url("ZenGardenHeroBrowser.jpg");
+      }
+
+      main {
+        border-color: rgba(255, 255, 255, .10);
+        background: rgba(27, 32, 21, .91);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, .48);
+      }
+
+      .domain { background: rgba(175, 194, 115, .12); }
     }
 
     @media (max-width: 600px) {
@@ -125,13 +158,17 @@
       main { border-color: rgba(14, 40, 26, .42); }
       .message { color: var(--ink); }
     }
+
+    @media (prefers-color-scheme: dark) and (prefers-contrast: more) {
+      main { border-color: rgba(255, 255, 255, .42); }
+    }
   </style>
 </head>
 <body>
   <main>
     <p class="eyebrow">Focus active</p>
     <h1>Website blocked</h1>
-    <p class="message">Use the menu bar to request a break.</p>
+    <p class="message">Use Zen Garden in the menu bar to unblock it briefly.</p>
     <div class="domain" id="domain">Blocked website</div>
   </main>
 

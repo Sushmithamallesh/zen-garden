@@ -25,15 +25,15 @@ struct SettingsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 18) {
-                    settingHeader(symbol: "switch.2", title: "Mac behavior")
+                    settingHeader(symbol: "switch.2", title: "Startup")
 
                     HStack(alignment: .center, spacing: 18) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Open Zen Garden when I log in")
+                            Text("Open at login")
                                 .font(GardenTypography.body(14, weight: .semibold))
-                            Text("Required for automatic schedules after login.")
+                            Text("Keeps automatic blocking running after you restart your Mac.")
                                 .font(GardenTypography.body(11))
-                                .foregroundStyle(GardenTheme.softInk.opacity(0.68))
+                                .foregroundStyle(GardenTheme.secondaryText)
                         }
 
                         Spacer()
@@ -42,7 +42,7 @@ struct SettingsView: View {
                             .labelsHidden()
                             .toggleStyle(.switch)
                             .tint(GardenTheme.moss)
-                            .accessibilityLabel("Open Zen Garden when I log in")
+                            .accessibilityLabel("Open Zen Garden at login")
                     }
                     .onChange(of: launchAtLogin) { enabled in
                         do {
@@ -64,15 +64,15 @@ struct SettingsView: View {
                 .zenCard()
 
                 VStack(alignment: .leading, spacing: 18) {
-                    settingHeader(symbol: "sun.horizon", title: "Daily blocking")
+                    settingHeader(symbol: "sun.horizon", title: "Automatic blocking")
 
                     HStack(alignment: .center, spacing: 18) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Use automatic weekday blocking")
+                            Text("Block on weekdays")
                                 .font(GardenTypography.body(14, weight: .semibold))
-                            Text("Monday–Friday use these times. Saturday is off. Sunday is always active.")
+                            Text("Runs at these times Monday–Friday. Saturday is off; Sunday runs all day.")
                                 .font(GardenTypography.body(11))
-                                .foregroundStyle(GardenTheme.softInk.opacity(0.68))
+                                .foregroundStyle(GardenTheme.secondaryText)
                         }
 
                         Spacer()
@@ -87,12 +87,12 @@ struct SettingsView: View {
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .tint(GardenTheme.moss)
-                        .accessibilityLabel("Use automatic weekday blocking")
+                        .accessibilityLabel("Block on weekdays")
                     }
 
                     HStack(spacing: 20) {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Weekday start")
+                            Text("Starts")
                                 .font(GardenTypography.body(13, weight: .semibold))
 
                             DatePicker(
@@ -112,7 +112,7 @@ struct SettingsView: View {
                             .frame(height: 48)
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Weekday end")
+                            Text("Ends")
                                 .font(GardenTypography.body(13, weight: .semibold))
 
                             DatePicker(
@@ -134,9 +134,9 @@ struct SettingsView: View {
 
                 VStack(alignment: .leading, spacing: 18) {
                     HStack {
-                        settingHeader(symbol: "lock.shield", title: "Browser permission")
+                        settingHeader(symbol: "lock.shield", title: "Browser access")
                         Spacer()
-                        Button(model.browserBlocker.isCheckingConnections ? "Checking…" : "Check browsers") {
+                        Button(model.browserBlocker.isCheckingConnections ? "Checking…" : "Check access") {
                             Task {
                                 await model.browserBlocker.checkInstalledBrowserConnections()
                             }
@@ -150,9 +150,9 @@ struct SettingsView: View {
                         .buttonStyle(SoftButtonStyle())
                     }
 
-                    Text("macOS requires Automation access to redirect blocked browser tabs. Manage access in Privacy & Security → Automation.")
+                    Text("Zen Garden uses Automation access to show its local block page. Manage it in Privacy & Security → Automation.")
                         .font(GardenTypography.body(13))
-                        .foregroundStyle(GardenTheme.softInk.opacity(0.76))
+                        .foregroundStyle(GardenTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
 
                     VStack(spacing: 9) {
@@ -168,7 +168,7 @@ struct SettingsView: View {
                                 VStack(alignment: .trailing, spacing: 2) {
                                     Text(connection.label)
                                         .font(GardenTypography.body(11))
-                                        .foregroundStyle(GardenTheme.softInk.opacity(0.62))
+                                        .foregroundStyle(GardenTheme.secondaryText)
                                     if case .failed(let message) = connection {
                                         Text(message)
                                             .font(GardenTypography.body(9))
@@ -186,9 +186,9 @@ struct SettingsView: View {
 
                 VStack(alignment: .leading, spacing: 15) {
                     settingHeader(symbol: "leaf", title: "Privacy")
-                    Text("No account or analytics. Blocked sites, access reasons, and schedules stay on this Mac.")
+                    Text("No account. No analytics. Blocked websites, schedules, and access reasons stay on this Mac.")
                         .font(GardenTypography.body(13))
-                        .foregroundStyle(GardenTheme.softInk.opacity(0.76))
+                        .foregroundStyle(GardenTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -196,7 +196,7 @@ struct SettingsView: View {
 
                 Text(versionText)
                     .font(GardenTypography.body(10))
-                    .foregroundStyle(GardenTheme.softInk.opacity(0.55))
+                    .foregroundStyle(GardenTheme.secondaryText)
                     .frame(maxWidth: .infinity)
             }
             .padding(34)
@@ -210,7 +210,7 @@ struct SettingsView: View {
     private func settingHeader(symbol: String, title: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: symbol)
-                .foregroundStyle(GardenTheme.vermilion)
+                .foregroundStyle(GardenTheme.moss)
             Text(title)
                 .font(GardenTypography.body(15, weight: .semibold))
         }
@@ -238,7 +238,7 @@ struct SettingsView: View {
         case .permissionDenied, .failed:
             GardenTheme.vermilion
         case .notInstalled, .notRunning, .noWindow:
-            GardenTheme.rakeLine.opacity(0.45)
+            GardenTheme.softInk.opacity(0.48)
         }
     }
 }

@@ -50,7 +50,7 @@ enum BrowserConnectionStatus: Equatable, Sendable {
         case .notRunning: "Installed · not open"
         case .noWindow: "Open · no window"
         case .ready: "Connected"
-        case .permissionDenied: "Permission needed"
+        case .permissionDenied: "Access needed"
         case .failed: "Connection failed"
         }
     }
@@ -124,8 +124,8 @@ actor BrowserScriptClient {
 
 @MainActor
 final class BrowserBlocker: ObservableObject {
-    @Published private(set) var statusText = "Focus off"
-    @Published private(set) var detailText = "Website blocking is inactive."
+    @Published private(set) var statusText = "Focus is off"
+    @Published private(set) var detailText = "Websites are not being blocked."
     @Published private(set) var lastBlockedDomain: String?
     @Published private(set) var permissionHelpNeeded = false
     @Published private(set) var connectionStatuses: [String: BrowserConnectionStatus] = [:]
@@ -200,8 +200,8 @@ final class BrowserBlocker: ObservableObject {
         let now = Date()
         let focus = settings.focusState(at: now)
         guard focus.isActive else {
-            statusText = "Focus off"
-            detailText = "Website blocking is inactive."
+            statusText = "Focus is off"
+            detailText = "Websites are not being blocked."
             return
         }
 
@@ -209,7 +209,7 @@ final class BrowserBlocker: ObservableObject {
             for: NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         ) else {
             statusText = "Focus is active"
-            detailText = "Website blocking is running."
+            detailText = "Blocked websites will be redirected."
             return
         }
 
@@ -253,8 +253,8 @@ final class BrowserBlocker: ObservableObject {
 
         if !settings.isDomainLocked(match.domain, at: now),
            settings.isDomainTemporarilyAllowed(match.domain, at: now) {
-            statusText = "Temporary access active"
-            detailText = "\(match.domain) is temporarily allowed."
+            statusText = "Website temporarily unblocked"
+            detailText = "\(match.domain) is temporarily unblocked."
             return
         }
 
@@ -368,7 +368,7 @@ final class BrowserBlocker: ObservableObject {
 
     private func showPermissionError(for browser: SupportedBrowser) {
         permissionHelpNeeded = true
-        statusText = "Automation permission needed"
+        statusText = "Browser access needed"
         detailText = "Allow Zen Garden to control \(browser.name) in System Settings."
     }
 

@@ -2,12 +2,12 @@
 
 # Required parameters:
 # @raycast.schemaVersion 1
-# @raycast.title Request a Break
+# @raycast.title Unblock a Website
 # @raycast.mode silent
 
 # Optional parameters:
 # @raycast.packageName Zen Garden
 # @raycast.icon 🍃
-# @raycast.description Open the reason-required Zen Garden break request.
+# @raycast.description Unblock a website after adding a reason.
 
 open "zengarden://request-break"

@@ -39,7 +39,7 @@ struct SchedulesView: View {
                         Image(systemName: "calendar.badge.plus")
                             .font(.system(size: 27))
                             .foregroundStyle(GardenTheme.moss)
-                        Text("No schedules")
+                        Text("No custom schedules")
                             .font(GardenTypography.display(17, weight: .medium))
                     }
                     .frame(maxWidth: .infinity)
@@ -94,7 +94,7 @@ private struct ScheduleCard: View {
                     model.settings.deleteSchedule(id: schedule.id)
                 } label: {
                     Image(systemName: "trash")
-                        .foregroundStyle(GardenTheme.softInk.opacity(0.62))
+                        .foregroundStyle(GardenTheme.secondaryText)
                 }
                 .buttonStyle(.plain)
             }
@@ -105,7 +105,7 @@ private struct ScheduleCard: View {
                 }
 
                 Image(systemName: "arrow.right")
-                    .foregroundStyle(GardenTheme.rakeLine)
+                    .foregroundStyle(GardenTheme.secondaryText)
 
                 timeControl(label: "Ends", minute: schedule.endMinute) { newValue in
                     model.settings.updateSchedule(id: schedule.id) { $0.endMinute = newValue }
@@ -128,7 +128,7 @@ private struct ScheduleCard: View {
                     } label: {
                         Text(day.0)
                             .font(GardenTypography.label(11, weight: .bold))
-                            .foregroundStyle(isSelected ? Color.white : GardenTheme.softInk)
+                            .foregroundStyle(isSelected ? Color.white : GardenTheme.secondaryText)
                             .frame(width: 29, height: 29)
                             .background(isSelected ? GardenTheme.moss : GardenTheme.ink.opacity(0.055))
                             .clipShape(Circle())
@@ -142,7 +142,7 @@ private struct ScheduleCard: View {
 
                 Text(schedule.isEnabled ? "Active" : "Paused")
                     .font(GardenTypography.label(11, weight: .semibold))
-                    .foregroundStyle(schedule.isEnabled ? GardenTheme.moss : GardenTheme.softInk.opacity(0.6))
+                    .foregroundStyle(schedule.isEnabled ? GardenTheme.moss : GardenTheme.secondaryText)
             }
         }
         .zenCard()
@@ -158,7 +158,7 @@ private struct ScheduleCard: View {
             Text(label.uppercased())
                 .font(GardenTypography.label(9, weight: .bold))
                 .tracking(1.2)
-                .foregroundStyle(GardenTheme.softInk.opacity(0.65))
+                .foregroundStyle(GardenTheme.secondaryText)
             DatePicker(
                 "",
                 selection: Binding(

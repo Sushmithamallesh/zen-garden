@@ -272,7 +272,7 @@ final class SettingsStore: ObservableObject {
     func addSchedule() {
         schedules.append(
             FocusSchedule(
-                name: "New rhythm",
+                name: "New schedule",
                 startMinute: 9 * 60,
                 endMinute: 12 * 60,
                 weekdays: [2, 3, 4, 5, 6],

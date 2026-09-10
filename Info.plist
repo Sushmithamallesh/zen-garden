@@ -35,6 +35,8 @@
     </array>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.productivity</string>
+    <key>LSUIElement</key>
+    <true/>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>NSAppleEventsUsageDescription</key>
@@ -43,7 +45,5 @@
     <true/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
-	<key>NSRequiresAquaSystemAppearance</key>
-	<true/>
 </dict>
 </plist>

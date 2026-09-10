@@ -36,7 +36,7 @@ struct DashboardView: View {
                     }
                         .font(GardenTypography.label(10, weight: .bold))
                         .tracking(1.6)
-                        .foregroundStyle(state.isActive ? GardenTheme.matchaShadow : GardenTheme.softInk.opacity(0.72))
+                        .foregroundStyle(state.isActive ? GardenTheme.matchaShadow : GardenTheme.secondaryText)
 
                     if state.isActive {
                         Text(remainingText(until: state.endsAt, now: now))
@@ -51,7 +51,7 @@ struct DashboardView: View {
                             }
                         }
                         .font(GardenTypography.body(12, weight: .medium))
-                        .foregroundStyle(GardenTheme.softInk.opacity(0.72))
+                        .foregroundStyle(GardenTheme.secondaryText)
                     } else {
                         Text("Start a focus session")
                             .font(GardenTypography.display(22, weight: .semibold))
@@ -65,7 +65,7 @@ struct DashboardView: View {
                         Button {
                             showingBreakRequest = true
                         } label: {
-                            Label("Request a break", systemImage: "lock.open")
+                            Label("Unblock a website", systemImage: "lock.open")
                         }
                         .buttonStyle(SoftButtonStyle())
 
@@ -85,7 +85,7 @@ struct DashboardView: View {
                             }
                         }
                         .font(GardenTypography.body(11, weight: .medium))
-                        .foregroundStyle(GardenTheme.softInk.opacity(0.70))
+                        .foregroundStyle(GardenTheme.secondaryText)
                     }
                 } else {
                     HStack(spacing: 8) {
@@ -145,14 +145,14 @@ struct DashboardView: View {
                 Text(
                     model.browserBlocker.permissionHelpNeeded
                         ? model.browserBlocker.statusText
-                        : (isActive ? "Browser blocking is on" : "Browser blocking is off")
+                        : (isActive ? "Blocking is on" : "Blocking is off")
                 )
                     .font(GardenTypography.body(11, weight: .semibold))
 
                 if model.browserBlocker.permissionHelpNeeded {
                     Text(model.browserBlocker.detailText)
                         .font(GardenTypography.body(10))
-                        .foregroundStyle(GardenTheme.softInk.opacity(0.72))
+                        .foregroundStyle(GardenTheme.secondaryText)
                         .lineLimit(2)
                 }
             }
@@ -198,131 +198,345 @@ struct MenuBarFocusView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var requestingBreak = false
 
+    private let durations = [25, 50, 90]
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let state = model.settings.focusState(at: context.date)
+            let activeBreaks = model.settings.activeBreaks(at: context.date)
+            let blockedCount = model.settings.websitesForBlocking(at: context.date)
+                .filter {
+                    $0.isEnabled
+                        && !model.settings.isDomainTemporarilyAllowed($0.domain, at: context.date)
+                }
+                .count
 
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 11) {
-                    ZenGardenMark(size: 30)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 10) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(GardenTheme.moss)
+                        Image(systemName: "leaf.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Color.white)
+                    }
+                    .frame(width: 32, height: 32)
+
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Zen Garden")
-                            .font(GardenTypography.body(14, weight: .semibold))
-                        Text(state.isActive ? "Focus active · Browser blocking on" : "Focus off")
-                            .font(GardenTypography.body(11))
-                            .foregroundStyle(.secondary)
+                            .font(GardenTypography.body(13, weight: .semibold))
+                        Text(headerStatus(state: state, blockedCount: blockedCount))
+                            .font(GardenTypography.body(10, weight: .medium))
+                            .foregroundStyle(GardenTheme.secondaryText)
                     }
-                }
 
-                Divider()
+                    Spacer(minLength: 8)
+
+                    Menu {
+                        Button {
+                            openDashboard()
+                        } label: {
+                            Label("Open dashboard", systemImage: "macwindow")
+                        }
+
+                        Divider()
+
+                        Button(role: .destructive) {
+                            NSApp.terminate(nil)
+                        } label: {
+                            Label("Quit Zen Garden", systemImage: "power")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(GardenTheme.softInk.opacity(0.78))
+                            .frame(width: 30, height: 30)
+                            .background(GardenTheme.ink.opacity(0.05))
+                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            .frame(width: 40, height: 40)
+                            .contentShape(Rectangle())
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .help("More")
+                }
+                .padding(.leading, 12)
+                .padding(.trailing, 8)
+                .padding(.vertical, 8)
+
+                Rectangle()
+                    .fill(GardenTheme.ink.opacity(0.07))
+                    .frame(height: 1)
 
                 if requestingBreak {
                     BreakRequestView(compact: true) {
                         requestingBreak = false
                     }
                     .environmentObject(model)
+                    .padding(10)
                 } else {
                     if state.isActive {
-                        Text(statusTitle(state: state, until: state.endsAt))
-                            .font(GardenTypography.display(20, weight: .semibold))
-
-                        let activeBreaks = model.settings.activeBreaks(at: context.date)
-                        let today = model.settings.breakRecords(on: context.date)
-
-                        if !activeBreaks.isEmpty {
-                            VStack(alignment: .leading, spacing: 5) {
-                                ForEach(activeBreaks) { record in
-                                    HStack {
+                        VStack(alignment: .leading, spacing: 9) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    HStack(spacing: 6) {
                                         Circle()
-                                            .fill(GardenTheme.vermilion)
+                                            .fill(GardenTheme.moss)
                                             .frame(width: 6, height: 6)
-                                        Text("\(record.domain) · \(menuRemaining(until: record.scheduledEnd, now: context.date))")
-                                            .font(GardenTypography.body(11, weight: .medium))
+                                        Text("FOCUS ACTIVE")
+                                            .font(GardenTypography.label(9, weight: .bold))
+                                            .tracking(1.25)
                                     }
+                                    .foregroundStyle(GardenTheme.matchaShadow)
+
+                                    Spacer()
+
+                                    Text(sourceLabel(state.source))
+                                        .font(GardenTypography.body(10, weight: .medium))
+                                        .foregroundStyle(GardenTheme.matchaShadow)
+                                }
+
+                                Text(remainingClock(until: state.endsAt, now: context.date))
+                                    .font(.system(size: 31, weight: .semibold, design: .rounded))
+                                    .monospacedDigit()
+                                    .foregroundStyle(GardenTheme.ink)
+
+                                if let endDate = state.endsAt {
+                                    Text("Ends \(endDate.formatted(date: .omitted, time: .shortened))")
+                                        .font(GardenTypography.body(10, weight: .medium))
+                                        .foregroundStyle(GardenTheme.matchaShadow)
                                 }
                             }
-                        }
-
-                        HStack(spacing: 9) {
-                            Button("Request a break…") { requestingBreak = true }
-                                .buttonStyle(VermilionButtonStyle(compact: true))
+                            .padding(12)
+                            .background(GardenTheme.matchaPale.opacity(0.34))
+                            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                                    .stroke(GardenTheme.matchaShadow.opacity(0.08), lineWidth: 1)
+                            }
 
                             if !activeBreaks.isEmpty {
-                                Button("Resume now") {
-                                    model.settings.endAllBreaks(at: context.date)
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("UNBLOCKED")
+                                        .font(GardenTypography.label(9, weight: .bold))
+                                        .tracking(1.1)
+                                        .foregroundStyle(GardenTheme.vermilion)
+
+                                    ForEach(activeBreaks) { record in
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "lock.open.fill")
+                                                .font(.system(size: 10, weight: .semibold))
+                                                .foregroundStyle(GardenTheme.vermilion)
+                                            Text(record.domain)
+                                                .font(GardenTypography.body(11, weight: .semibold))
+                                            Spacer()
+                                            Text(menuRemaining(until: record.scheduledEnd, now: context.date))
+                                                .font(GardenTypography.body(10, weight: .medium))
+                                                .monospacedDigit()
+                                                .foregroundStyle(GardenTheme.secondaryText)
+                                        }
+                                    }
+
+                                    Button {
+                                        model.settings.endAllBreaks(at: context.date)
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "lock.fill")
+                                            Text("Resume blocking")
+                                        }
+                                            .font(GardenTypography.body(11, weight: .medium))
+                                    }
+                                    .buttonStyle(MenuBarSecondaryButtonStyle())
                                 }
-                                .buttonStyle(SoftButtonStyle())
+                            }
+
+                            Button {
+                                requestingBreak = true
+                            } label: {
+                                HStack(spacing: 9) {
+                                    Image(systemName: "lock.open")
+                                        .font(.system(size: 12, weight: .semibold))
+                                    Text("Unblock a website")
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .opacity(0.55)
+                                }
+                            }
+                            .buttonStyle(MenuBarPrimaryButtonStyle())
+
+                            if model.browserBlocker.permissionHelpNeeded {
+                                Button {
+                                    model.browserBlocker.openAutomationSettings()
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                        Text("Browser access needed")
+                                        Spacer()
+                                        Text("Fix")
+                                            .fontWeight(.semibold)
+                                    }
+                                }
+                                .buttonStyle(MenuBarWarningButtonStyle())
                             }
                         }
-
-                        if !today.isEmpty {
-                            Text(todaySummary(today, now: context.date))
-                                .font(GardenTypography.body(11))
-                                .foregroundStyle(GardenTheme.matchaShadow.opacity(0.82))
-                        }
+                        .padding(10)
                     } else {
-                        Text("Start a focus session")
-                            .font(GardenTypography.body(12, weight: .semibold))
+                        VStack(alignment: .leading, spacing: 9) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(GardenTheme.softInk.opacity(0.36))
+                                        .frame(width: 6, height: 6)
+                                    Text("READY")
+                                        .font(GardenTypography.label(9, weight: .bold))
+                                        .tracking(1.25)
+                                }
+                                .foregroundStyle(GardenTheme.secondaryText)
 
-                        HStack {
-                            Button("25 min") { model.settings.startSession(minutes: 25) }
-                                .buttonStyle(SoftButtonStyle())
-                            Button("50 min") { model.settings.startSession(minutes: 50) }
-                                .buttonStyle(SoftButtonStyle())
-                            Button("90 min") { model.settings.startSession(minutes: 90) }
-                                .buttonStyle(SoftButtonStyle())
+                                Text("Start a focus session")
+                                    .font(GardenTypography.display(19, weight: .semibold))
+
+                                Text("Choose a duration")
+                                    .font(GardenTypography.body(10, weight: .medium))
+                                    .foregroundStyle(GardenTheme.secondaryText)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(GardenTheme.ink.opacity(0.035))
+                            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+
+                            HStack(spacing: 8) {
+                                ForEach(durations, id: \.self) { minutes in
+                                    Button("\(minutes) min") {
+                                        model.settings.startSession(minutes: minutes)
+                                    }
+                                    .buttonStyle(MenuBarDurationButtonStyle())
+                                }
+                            }
                         }
+                        .padding(10)
                     }
-                }
-
-                Divider()
-
-                HStack {
-                    Button {
-                        openWindow(id: "main")
-                        WindowController.showMainWindow()
-                    } label: {
-                        Label("Open Zen Garden", systemImage: "macwindow")
-                            .font(GardenTypography.body(11, weight: .medium))
-                    }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-
-                    Button {
-                        NSApp.terminate(nil)
-                    } label: {
-                        Label("Quit", systemImage: "power")
-                            .font(GardenTypography.body(11, weight: .medium))
-                    }
-                    .buttonStyle(.plain)
                 }
             }
-            .padding(16)
-            .frame(width: 320)
+            .frame(width: 312)
+            .background(GardenTheme.warmWhite)
+            .tint(GardenTheme.moss)
             .handlesZenGardenCommands()
         }
+    }
+
+    private func openDashboard() {
+        openWindow(id: "main")
+        WindowController.showMainWindow()
+    }
+
+    private func headerStatus(state: FocusState, blockedCount: Int) -> String {
+        if model.browserBlocker.permissionHelpNeeded {
+            return "Browser access needed"
+        }
+        return state.isActive ? blockedSiteLabel(blockedCount) : "Not blocking"
+    }
+
+    private func sourceLabel(_ source: FocusSource?) -> String {
+        switch source {
+        case .manual:
+            return "Manual session"
+        case .daily:
+            return "Daily schedule"
+        case .schedule(let name):
+            return name
+        case nil:
+            return ""
+        }
+    }
+
+    private func remainingClock(until endDate: Date?, now: Date) -> String {
+        guard let endDate else { return "In progress" }
+        let total = max(0, Int(endDate.timeIntervalSince(now)))
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        let seconds = total % 60
+        return hours > 0
+            ? String(format: "%d:%02d:%02d", hours, minutes, seconds)
+            : String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    private func blockedSiteLabel(_ count: Int) -> String {
+        "\(count) \(count == 1 ? "website" : "websites") blocked"
     }
 
     private func menuRemaining(until endDate: Date?, now: Date) -> String {
         guard let endDate else { return "Focus active" }
         let total = max(0, Int(endDate.timeIntervalSince(now)))
         let minutes = max(1, Int(ceil(Double(total) / 60)))
-        return "\(minutes) min remaining"
+        return "\(minutes) min"
     }
+}
 
-    private func statusTitle(state: FocusState, until endDate: Date?) -> String {
-        if state.source == .daily, let endDate {
-            return "Blocking until \(endDate.formatted(date: .omitted, time: .shortened))"
-        }
-        return menuRemaining(until: endDate, now: Date())
+private struct MenuBarPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(GardenTypography.body(11, weight: .semibold))
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 13)
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .background(configuration.isPressed ? GardenTheme.mossPressed : GardenTheme.moss)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
+}
 
-    private func todaySummary(_ records: [BreakRecord], now: Date) -> String {
-        let minutes = records.reduce(0) { result, record in
-            result + max(1, Int(ceil(record.activeDuration(until: now) / 60)))
-        }
-        let noun = records.count == 1 ? "break" : "breaks"
-        return "Today · \(records.count) \(noun) · \(minutes) min open"
+private struct MenuBarSecondaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(GardenTypography.body(11, weight: .semibold))
+            .foregroundStyle(GardenTheme.matchaShadow)
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .background(configuration.isPressed ? GardenTheme.matchaPale.opacity(0.34) : GardenTheme.matchaPale.opacity(0.24))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(GardenTheme.matchaShadow.opacity(0.09), lineWidth: 1)
+            }
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+private struct MenuBarWarningButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(GardenTypography.body(10, weight: .medium))
+            .foregroundStyle(GardenTheme.vermilion)
+            .padding(.horizontal, 11)
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .background(GardenTheme.vermilion.opacity(configuration.isPressed ? 0.12 : 0.065))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct MenuBarDurationButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(GardenTypography.body(11, weight: .semibold))
+            .foregroundStyle(GardenTheme.matchaShadow)
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .background(configuration.isPressed ? GardenTheme.matchaPale.opacity(0.34) : GardenTheme.matchaPale.opacity(0.24))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(GardenTheme.matchaShadow.opacity(0.09), lineWidth: 1)
+            }
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
