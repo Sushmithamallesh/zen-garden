@@ -25,7 +25,10 @@ struct StoreTests {
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let calendar = Calendar.current
-        let dayStart = calendar.startOfDay(for: Date())
+        // Keep weekday assertions independent of the day the test suite runs.
+        let dayStart = calendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 19)
+        )!
         let sixFiftyNineAM = calendar.date(byAdding: .minute, value: (6 * 60) + 59, to: dayStart)!
         let sevenAM = calendar.date(byAdding: .hour, value: 7, to: dayStart)!
         let fourPM = calendar.date(byAdding: .hour, value: 16, to: dayStart)!

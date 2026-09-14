@@ -24,11 +24,19 @@ fi
 mkdir -p "$project_root/.build/module-cache"
 export CLANG_MODULE_CACHE_PATH="$project_root/.build/module-cache"
 
-# Some Command Line Tools installations retain an older compatible SDK beside
-# the active one during an update. Prefer Xcode's selected SDK when Xcode is
-# installed; otherwise use the known-compatible fallback when it is present.
-if [[ ! -d /Applications/Xcode.app && -d /Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk ]]; then
-  export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk
+# Some Command Line Tools updates can select a newer SDK before installing all
+# of its Swift macro plug-ins. Prefer Xcode (or an explicit SDKROOT); otherwise
+# use the newest SDK that this project has verified with the standalone tools.
+if [[ ! -d /Applications/Xcode.app && -z "${SDKROOT:-}" ]]; then
+  for compatible_sdk in \
+    /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk \
+    /Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk \
+    /Library/Developer/CommandLineTools/SDKs/MacOSX15.4.sdk; do
+    if [[ -d "$compatible_sdk" ]]; then
+      export SDKROOT="$compatible_sdk"
+      break
+    fi
+  done
 fi
 
 build_arguments=(-c release --disable-sandbox)

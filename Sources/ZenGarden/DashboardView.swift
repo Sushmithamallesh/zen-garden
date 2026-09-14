@@ -195,7 +195,6 @@ struct DashboardView: View {
 
 struct MenuBarFocusView: View {
     @EnvironmentObject private var model: AppModel
-    @Environment(\.openWindow) private var openWindow
     @State private var requestingBreak = false
 
     private let durations = [25, 50, 90]
@@ -428,7 +427,6 @@ struct MenuBarFocusView: View {
     }
 
     private func openDashboard() {
-        openWindow(id: "main")
         WindowController.showMainWindow()
     }
 
