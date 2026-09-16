@@ -89,14 +89,18 @@ private struct ScheduleCard: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .tint(GardenTheme.moss)
+                .accessibilityLabel("Enable \(schedule.name)")
 
                 Button {
                     model.settings.deleteSchedule(id: schedule.id)
                 } label: {
                     Image(systemName: "trash")
                         .foregroundStyle(GardenTheme.secondaryText)
+                        .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.plain)
+                .help("Delete \(schedule.name)")
+                .accessibilityLabel("Delete \(schedule.name)")
             }
 
             HStack(spacing: 18) {
@@ -132,6 +136,7 @@ private struct ScheduleCard: View {
                             .frame(width: 29, height: 29)
                             .background(isSelected ? GardenTheme.moss : GardenTheme.ink.opacity(0.055))
                             .clipShape(Circle())
+                            .frame(width: 40, height: 40)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(dayName(for: day.1))
@@ -174,7 +179,7 @@ private struct ScheduleCard: View {
 
     private func date(for minute: Int) -> Date {
         let start = Calendar.current.startOfDay(for: Date())
-        return Calendar.current.date(byAdding: .minute, value: minute, to: start) ?? start
+        return WallClock.date(atMinute: minute, on: start, calendar: .current) ?? start
     }
 
     private func minutes(from date: Date) -> Int {

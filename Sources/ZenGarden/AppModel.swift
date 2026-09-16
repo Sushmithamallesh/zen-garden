@@ -2,11 +2,57 @@ import AppKit
 import Combine
 import Foundation
 import ServiceManagement
+import SwiftUI
+
+@MainActor
+final class WindowRouter {
+    private var openWindowAction: OpenWindowAction?
+    private var pendingWindowID: String?
+
+    func register(_ action: OpenWindowAction) {
+        openWindowAction = action
+
+        if let pendingWindowID {
+            self.pendingWindowID = nil
+            openWindow(id: pendingWindowID)
+        }
+    }
+
+    func openMainWindow() {
+        openWindow(id: "main")
+    }
+
+    func openBreakRequestWindow() {
+        openWindow(id: "break-request")
+    }
+
+    private func openWindow(id: String) {
+        guard let openWindowAction else {
+            pendingWindowID = id
+            WindowController.raiseExistingWindow(withTitle: title(for: id))
+            return
+        }
+
+        openWindowAction(id: id)
+        // `openWindow` creates a destroyed SwiftUI window asynchronously. Raise
+        // it on the next run loop once AppKit has attached the NSWindow.
+        DispatchQueue.main.async {
+            WindowController.raiseExistingWindow(withTitle: self.title(for: id))
+        }
+    }
+
+    private func title(for id: String) -> String {
+        id == "break-request" ? "Unblock a Website" : "Zen Garden"
+    }
+}
 
 @MainActor
 final class AppModel: ObservableObject {
     let settings: SettingsStore
     let browserBlocker: BrowserBlocker
+    let windowRouter = WindowRouter()
+
+    @Published private(set) var launchAtLoginError: String?
 
     private var cancellables: Set<AnyCancellable> = []
     private var maintenanceTimer: Timer?
@@ -21,6 +67,8 @@ final class AppModel: ObservableObject {
             .sink { [weak self] _ in
                 Task { @MainActor in
                     self?.objectWillChange.send()
+                    await Task.yield()
+                    await self?.browserBlocker.checkNow()
                 }
             }
             .store(in: &cancellables)
@@ -62,6 +110,13 @@ final class AppModel: ObservableObject {
 
     private func performMaintenance(now: Date = Date()) {
         settings.performMaintenance(at: now)
+        Task { [weak self] in
+            await self?.browserBlocker.checkNow()
+        }
+    }
+
+    func recordLaunchAtLoginError(_ error: Error?) {
+        launchAtLoginError = error?.localizedDescription
     }
 }
 
@@ -72,9 +127,9 @@ enum LoginItemController {
         SMAppService.mainApp.status == .enabled
     }
 
-    static func enableByDefaultIfNeeded(defaults: UserDefaults = .standard) {
+    static func enableByDefaultIfNeeded(defaults: UserDefaults = .standard) throws {
         guard defaults.object(forKey: preferenceKey) == nil else { return }
-        try? setEnabled(true, defaults: defaults)
+        try setEnabled(true, defaults: defaults)
     }
 
     static func setEnabled(_ isEnabled: Bool, defaults: UserDefaults = .standard) throws {
@@ -92,13 +147,11 @@ enum LoginItemController {
 
 @MainActor
 enum WindowController {
-    static func showMainWindow() {
+    static func raiseExistingWindow(withTitle title: String) {
         NSApp.activate(ignoringOtherApps: true)
 
-        if let window = NSApp.windows.first(where: { $0.canBecomeKey && $0.title.contains("Zen Garden") }) {
+        if let window = NSApp.windows.first(where: { $0.canBecomeKey && $0.title == title }) {
             window.makeKeyAndOrderFront(nil)
-        } else {
-            NSApp.windows.first(where: { $0.canBecomeKey })?.makeKeyAndOrderFront(nil)
         }
     }
 }

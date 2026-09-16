@@ -79,6 +79,24 @@ struct StoreTests {
             "rejects a break when focus is inactive"
         )
         expect(
+            !dailyStore.requestBreak(
+                domain: "instagram.com",
+                reason: "  \n ",
+                minutes: 10,
+                now: fourPM
+            ),
+            "rejects a blank access reason"
+        )
+        expect(
+            !dailyStore.requestBreak(
+                domain: "instagram.com",
+                reason: String(repeating: "a", count: TemporaryAccessPolicy.maximumReasonLength + 1),
+                minutes: 10,
+                now: fourPM
+            ),
+            "rejects an oversized access reason"
+        )
+        expect(
             dailyStore.requestBreak(
                 domain: "instagram.com",
                 reason: "Reply to one message",
@@ -114,6 +132,35 @@ struct StoreTests {
             "persists the break reason locally"
         )
 
+        let instagramID = dailyStore.websites.first { $0.domain == "instagram.com" }!.id
+        dailyStore.setWebsiteEnabled(id: instagramID, isEnabled: false, at: fourFiftyNine)
+        expect(
+            !dailyStore.isDomainTemporarilyAllowed("instagram.com", at: fourFiftyNine),
+            "ends a temporary exception when its website is disabled"
+        )
+
+        let deleteSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
+        let deleteDefaults = UserDefaults(suiteName: deleteSuite)!
+        deleteDefaults.removePersistentDomain(forName: deleteSuite)
+        defer { deleteDefaults.removePersistentDomain(forName: deleteSuite) }
+        let deleteStore = SettingsStore(defaults: deleteDefaults)
+        deleteStore.startSession(minutes: 60, now: fourPM)
+        expect(
+            deleteStore.requestBreak(
+                domain: "reddit.com",
+                reason: "Check one saved answer",
+                minutes: 10,
+                now: fourPM
+            ),
+            "creates an exception before deletion"
+        )
+        let redditID = deleteStore.websites.first { $0.domain == "reddit.com" }!.id
+        deleteStore.deleteWebsite(id: redditID, at: fourPM)
+        expect(
+            !deleteStore.isDomainTemporarilyAllowed("reddit.com", at: fourPM),
+            "ends a temporary exception when its website is deleted"
+        )
+
         let overlapSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
         let overlapDefaults = UserDefaults(suiteName: overlapSuite)!
         overlapDefaults.removePersistentDomain(forName: overlapSuite)
@@ -125,6 +172,20 @@ struct StoreTests {
         expect(
             overlapState.source == .manual && overlapState.endsAt == sixPM,
             "keeps the longest overlapping focus boundary active"
+        )
+        expect(
+            overlapStore.requestBreak(
+                domain: "reddit.com",
+                reason: "Check a project answer",
+                minutes: 10,
+                now: fourPM
+            ),
+            "creates an exception during an overlapping session"
+        )
+        overlapStore.endManualSession(at: fourPM)
+        expect(
+            !overlapStore.isDomainTemporarilyAllowed("reddit.com", at: fourPM),
+            "ends temporary exceptions when a manual session is ended early"
         )
 
         let weeklySuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
@@ -176,6 +237,55 @@ struct StoreTests {
         expect(
             weeklyStore.focusState(at: sundayNoon, calendar: policyCalendar).source == .daily,
             "keeps the Sunday lock active when weekday blocking is disabled"
+        )
+
+        let invalidSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
+        let invalidDefaults = UserDefaults(suiteName: invalidSuite)!
+        invalidDefaults.removePersistentDomain(forName: invalidSuite)
+        defer { invalidDefaults.removePersistentDomain(forName: invalidSuite) }
+        let encoder = JSONEncoder()
+        invalidDefaults.set(
+            try! encoder.encode([
+                BlockedWebsite(domain: "Reddit.com"),
+                BlockedWebsite(domain: "reddit.com"),
+                BlockedWebsite(domain: "bad..domain")
+            ]),
+            forKey: "zenGarden.websites.v1"
+        )
+        invalidDefaults.set(
+            try! encoder.encode([
+                FocusSchedule(
+                    name: " ",
+                    startMinute: -30,
+                    endMinute: 1_900,
+                    weekdays: [0, 2, 8],
+                    isEnabled: true
+                )
+            ]),
+            forKey: "zenGarden.schedules.v1"
+        )
+        let invalidStore = SettingsStore(defaults: invalidDefaults)
+        expect(
+            invalidStore.websites.map(\.domain) == ["reddit.com"],
+            "normalizes, deduplicates, and removes invalid persisted websites"
+        )
+        expect(
+            invalidStore.schedules.first?.name == "Schedule"
+                && invalidStore.schedules.first?.startMinute == 0
+                && invalidStore.schedules.first?.endMinute == 1_439
+                && invalidStore.schedules.first?.weekdays == [2],
+            "repairs malformed persisted schedule fields"
+        )
+
+        let corruptSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
+        let corruptDefaults = UserDefaults(suiteName: corruptSuite)!
+        corruptDefaults.removePersistentDomain(forName: corruptSuite)
+        defer { corruptDefaults.removePersistentDomain(forName: corruptSuite) }
+        corruptDefaults.set(Data([0xFF, 0x00]), forKey: "zenGarden.websites.v1")
+        let recoveredStore = SettingsStore(defaults: corruptDefaults)
+        expect(
+            recoveredStore.websites.contains { $0.domain == "instagram.com" },
+            "recovers safe defaults from corrupt website preferences"
         )
 
         if failures > 0 {

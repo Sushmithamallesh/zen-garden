@@ -16,13 +16,12 @@ Zen Garden ships directly through GitHub Releases. A release contains:
    git diff --check
    ./scripts/test-core.sh
    ./scripts/build-app.sh --universal
-   ./scripts/package-release.sh
-   codesign --verify --deep --strict "dist/Zen Garden.app"
-   (cd dist && shasum -a 256 -c SHA256SUMS.txt)
+   ./scripts/verify-build.sh
    ```
 
-4. Test the packaged DMG on a separate macOS user account when permissions,
-   login-item behavior, or first-launch behavior changed.
+4. Complete the manual checks in [`QA.md`](QA.md). Test the packaged DMG on a
+   separate macOS user account when permissions, login-item behavior, or
+   first-launch behavior changed.
 5. Commit and push the release changes. Wait for CI to pass.
 6. Create a signed tag matching the app version and push it. For example:
 

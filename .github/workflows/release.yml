@@ -86,8 +86,8 @@ jobs:
           xcrun stapler staple "dist/Zen Garden.app"
           xcrun stapler validate "dist/Zen Garden.app"
 
-      - name: Package downloads
-        run: ./scripts/package-release.sh
+      - name: Package and verify downloads
+        run: ./scripts/verify-build.sh
 
       - name: Verify packaged app
         run: |

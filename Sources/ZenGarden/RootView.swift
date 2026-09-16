@@ -9,6 +9,7 @@ private enum RootSheet: String, Identifiable {
 
 struct RootView: View {
     @EnvironmentObject private var model: AppModel
+    @Environment(\.openWindow) private var openWindow
     @State private var presentedSheet: RootSheet?
 
     var body: some View {
@@ -52,6 +53,13 @@ struct RootView: View {
             .environmentObject(model)
         }
         .handlesZenGardenCommands()
+        .background {
+            Color.clear
+                .frame(width: 0, height: 0)
+                .onAppear {
+                    model.windowRouter.register(openWindow)
+                }
+        }
     }
 }
 

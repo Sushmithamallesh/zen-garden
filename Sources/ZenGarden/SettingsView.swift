@@ -48,8 +48,10 @@ struct SettingsView: View {
                         do {
                             try LoginItemController.setEnabled(enabled)
                             launchError = nil
+                            model.recordLaunchAtLoginError(nil)
                         } catch {
                             launchError = error.localizedDescription
+                            model.recordLaunchAtLoginError(error)
                             launchAtLogin = LoginItemController.isEnabled
                         }
                     }
@@ -204,6 +206,7 @@ struct SettingsView: View {
         .scrollIndicators(.hidden)
         .onAppear {
             launchAtLogin = LoginItemController.isEnabled
+            launchError = model.launchAtLoginError
         }
     }
 
@@ -223,7 +226,7 @@ struct SettingsView: View {
 
     private func date(for minute: Int) -> Date {
         let start = Calendar.current.startOfDay(for: Date())
-        return Calendar.current.date(byAdding: .minute, value: minute, to: start) ?? start
+        return WallClock.date(atMinute: minute, on: start, calendar: .current) ?? start
     }
 
     private func minutes(from date: Date) -> Int {

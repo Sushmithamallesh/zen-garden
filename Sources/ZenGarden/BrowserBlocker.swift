@@ -64,15 +64,17 @@ actor BrowserScriptClient {
         let tabExpression = tabExpression(for: browser)
 
         let script = """
-        tell application id "\(browser.bundleIdentifier)"
-            if it is not running then
-                return "\(Self.notRunningMarker)"
-            end if
-            if (count of windows) is 0 then
-                return "\(Self.noWindowMarker)"
-            end if
-            return \(tabExpression)
-        end tell
+        with timeout of 3 seconds
+            tell application id "\(browser.bundleIdentifier)"
+                if it is not running then
+                    return "\(Self.notRunningMarker)"
+                end if
+                if (count of windows) is 0 then
+                    return "\(Self.noWindowMarker)"
+                end if
+                return \(tabExpression)
+            end tell
+        end timeout
         """
 
         return execute(script)
@@ -83,14 +85,16 @@ actor BrowserScriptClient {
         let tabExpression = tabExpression(for: browser)
 
         let script = """
-        tell application id "\(browser.bundleIdentifier)"
-            if it is running then
-                if (count of windows) > 0 then
-                    set \(tabExpression) to "\(escapedDestination)"
-                    return "ok"
+        with timeout of 3 seconds
+            tell application id "\(browser.bundleIdentifier)"
+                if it is running then
+                    if (count of windows) > 0 then
+                        set \(tabExpression) to "\(escapedDestination)"
+                        return "ok"
+                    end if
                 end if
-            end if
-        end tell
+            end tell
+        end timeout
         return ""
         """
 
@@ -135,6 +139,7 @@ final class BrowserBlocker: ObservableObject {
     private weak var settings: SettingsStore?
     private var timer: Timer?
     private var isChecking = false
+    private var activationObserver: NSObjectProtocol?
 
     func start(settings: SettingsStore) {
         self.settings = settings
@@ -149,14 +154,32 @@ final class BrowserBlocker: ObservableObject {
         RunLoop.main.add(pollingTimer, forMode: .common)
         timer = pollingTimer
 
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.checkNow()
+            }
+        }
+
         Task {
-            await checkActiveBrowser()
+            await checkNow()
         }
     }
 
     func stop() {
         timer?.invalidate()
         timer = nil
+        if let activationObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(activationObserver)
+            self.activationObserver = nil
+        }
+    }
+
+    func checkNow() async {
+        await checkActiveBrowser()
     }
 
     func openAutomationSettings() {

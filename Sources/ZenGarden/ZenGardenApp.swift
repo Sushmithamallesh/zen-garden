@@ -8,7 +8,12 @@ final class ZenGardenAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.applicationIconImage = AppIconRenderer.make()
-        LoginItemController.enableByDefaultIfNeeded()
+        do {
+            try LoginItemController.enableByDefaultIfNeeded()
+            model.recordLaunchAtLoginError(nil)
+        } catch {
+            model.recordLaunchAtLoginError(error)
+        }
         menuBarController = MenuBarController(model: model)
     }
 }

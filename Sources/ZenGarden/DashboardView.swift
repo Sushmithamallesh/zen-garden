@@ -96,8 +96,7 @@ struct DashboardView: View {
                                 Text("\(minutes) min")
                                     .font(GardenTypography.label(11, weight: .semibold))
                                     .foregroundStyle(selectedMinutes == minutes ? Color.white : GardenTheme.softInk)
-                                    .padding(.horizontal, 11)
-                                    .padding(.vertical, 7)
+                                    .frame(minWidth: 64, minHeight: 40)
                                     .background(selectedMinutes == minutes ? GardenTheme.moss : GardenTheme.ink.opacity(0.055))
                                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                             }
@@ -259,6 +258,7 @@ struct MenuBarFocusView: View {
                     .menuIndicator(.hidden)
                     .fixedSize()
                     .help("More")
+                    .accessibilityLabel("More options")
                 }
                 .padding(.leading, 12)
                 .padding(.trailing, 8)
@@ -427,7 +427,7 @@ struct MenuBarFocusView: View {
     }
 
     private func openDashboard() {
-        WindowController.showMainWindow()
+        model.windowRouter.openMainWindow()
     }
 
     private func headerStatus(state: FocusState, blockedCount: Int) -> String {

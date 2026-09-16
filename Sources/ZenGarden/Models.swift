@@ -26,36 +26,33 @@ struct FocusSchedule: Identifiable, Codable, Equatable, Sendable {
         guard isEnabled else { return nil }
 
         let dayStart = calendar.startOfDay(for: date)
-        let nowComponents = calendar.dateComponents([.hour, .minute], from: date)
-        let minuteOfDay = (nowComponents.hour ?? 0) * 60 + (nowComponents.minute ?? 0)
         let todayWeekday = calendar.component(.weekday, from: date)
 
         if startMinute < endMinute {
             guard weekdays.contains(todayWeekday),
-                  minuteOfDay >= startMinute,
-                  minuteOfDay < endMinute,
-                  let start = calendar.date(byAdding: .minute, value: startMinute, to: dayStart),
-                  let end = calendar.date(byAdding: .minute, value: endMinute, to: dayStart)
+                  let start = WallClock.date(atMinute: startMinute, on: dayStart, calendar: calendar),
+                  let end = WallClock.date(atMinute: endMinute, on: dayStart, calendar: calendar)
             else { return nil }
 
-            return DateInterval(start: start, end: end)
+            let interval = DateInterval(start: start, end: end)
+            return interval.containsHalfOpen(date) ? interval : nil
         }
 
         if startMinute > endMinute {
-            if minuteOfDay >= startMinute,
-               weekdays.contains(todayWeekday),
-               let start = calendar.date(byAdding: .minute, value: startMinute, to: dayStart),
+            if weekdays.contains(todayWeekday),
                let nextDay = calendar.date(byAdding: .day, value: 1, to: dayStart),
-               let end = calendar.date(byAdding: .minute, value: endMinute, to: nextDay) {
-                return DateInterval(start: start, end: end)
+               let start = WallClock.date(atMinute: startMinute, on: dayStart, calendar: calendar),
+               let end = WallClock.date(atMinute: endMinute, on: nextDay, calendar: calendar) {
+                let interval = DateInterval(start: start, end: end)
+                if interval.containsHalfOpen(date) { return interval }
             }
 
-            if minuteOfDay < endMinute,
-               let previousDay = calendar.date(byAdding: .day, value: -1, to: dayStart),
+            if let previousDay = calendar.date(byAdding: .day, value: -1, to: dayStart),
                weekdays.contains(calendar.component(.weekday, from: previousDay)),
-               let start = calendar.date(byAdding: .minute, value: startMinute, to: previousDay),
-               let end = calendar.date(byAdding: .minute, value: endMinute, to: dayStart) {
-                return DateInterval(start: start, end: end)
+               let start = WallClock.date(atMinute: startMinute, on: previousDay, calendar: calendar),
+               let end = WallClock.date(atMinute: endMinute, on: dayStart, calendar: calendar) {
+                let interval = DateInterval(start: start, end: end)
+                if interval.containsHalfOpen(date) { return interval }
             }
 
             return nil
@@ -100,6 +97,16 @@ struct BreakRecord: Identifiable, Codable, Equatable, Sendable {
     }
 }
 
+enum TemporaryAccessPolicy {
+    static let maximumReasonLength = 500
+
+    static func normalizedReason(_ input: String) -> String? {
+        let reason = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !reason.isEmpty, reason.count <= maximumReasonLength else { return nil }
+        return reason
+    }
+}
+
 enum DailyFocusPolicy {
     static let defaultStartMinute = 7 * 60
     static let defaultCutoffMinute = 17 * 60
@@ -128,31 +135,28 @@ enum DailyFocusPolicy {
         let safeCutoff = min(max(cutoffMinute, 0), (24 * 60) - 1)
         guard safeStart != safeCutoff else { return nil }
 
-        let minuteOfDay = calendar.dateComponents([.hour, .minute], from: date)
-        let currentMinute = (minuteOfDay.hour ?? 0) * 60 + (minuteOfDay.minute ?? 0)
-
         if safeStart < safeCutoff {
-            guard currentMinute >= safeStart,
-                  currentMinute < safeCutoff,
-                  let start = calendar.date(byAdding: .minute, value: safeStart, to: dayStart),
-                  let cutoff = calendar.date(byAdding: .minute, value: safeCutoff, to: dayStart)
+            guard let start = WallClock.date(atMinute: safeStart, on: dayStart, calendar: calendar),
+                  let cutoff = WallClock.date(atMinute: safeCutoff, on: dayStart, calendar: calendar)
             else { return nil }
 
-            return DateInterval(start: start, end: cutoff)
+            let interval = DateInterval(start: start, end: cutoff)
+            return interval.containsHalfOpen(date) ? interval : nil
         }
 
-        if currentMinute >= safeStart,
-           let start = calendar.date(byAdding: .minute, value: safeStart, to: dayStart),
+        if let start = WallClock.date(atMinute: safeStart, on: dayStart, calendar: calendar),
            let nextDay = calendar.date(byAdding: .day, value: 1, to: dayStart),
-           let cutoff = calendar.date(byAdding: .minute, value: safeCutoff, to: nextDay) {
-            return DateInterval(start: start, end: cutoff)
+           let cutoff = WallClock.date(atMinute: safeCutoff, on: nextDay, calendar: calendar) {
+            let interval = DateInterval(start: start, end: cutoff)
+            if interval.containsHalfOpen(date) { return interval }
         }
 
-        if currentMinute < safeCutoff,
-           let previousDay = calendar.date(byAdding: .day, value: -1, to: dayStart),
-           let start = calendar.date(byAdding: .minute, value: safeStart, to: previousDay),
-           let cutoff = calendar.date(byAdding: .minute, value: safeCutoff, to: dayStart) {
-            return DateInterval(start: start, end: cutoff)
+        if let previousDay = calendar.date(byAdding: .day, value: -1, to: dayStart),
+           (2...6).contains(calendar.component(.weekday, from: previousDay)),
+           let start = WallClock.date(atMinute: safeStart, on: previousDay, calendar: calendar),
+           let cutoff = WallClock.date(atMinute: safeCutoff, on: dayStart, calendar: calendar) {
+            let interval = DateInterval(start: start, end: cutoff)
+            if interval.containsHalfOpen(date) { return interval }
         }
 
         return nil
@@ -218,9 +222,24 @@ enum DomainMatcher {
             host.removeFirst(4)
         }
 
+        let labels = host.split(separator: ".", omittingEmptySubsequences: false)
         guard !host.isEmpty,
+              host.count <= 253,
               !host.contains(" "),
-              host.range(of: "^[a-z0-9.-]+$", options: .regularExpression) != nil
+              !labels.isEmpty,
+              labels.allSatisfy({ label in
+                  guard !label.isEmpty,
+                        label.count <= 63,
+                        label.first?.isASCII == true,
+                        label.last?.isASCII == true,
+                        label.first?.isLetter == true || label.first?.isNumber == true,
+                        label.last?.isLetter == true || label.last?.isNumber == true
+                  else { return false }
+
+                  return label.allSatisfy { character in
+                      character.isASCII && (character.isLetter || character.isNumber || character == "-")
+                  }
+              })
         else { return nil }
 
         return host
@@ -249,5 +268,36 @@ enum DomainMatcher {
         websites.first { website in
             website.isEnabled && matches(urlString: urlString, blockedDomain: website.domain)
         }
+    }
+}
+
+enum WallClock {
+    static func date(atMinute minute: Int, on day: Date, calendar: Calendar) -> Date? {
+        let safeMinute = min(max(minute, 0), (24 * 60) - 1)
+        let dayStart = calendar.startOfDay(for: day)
+        let searchStart = dayStart.addingTimeInterval(-1)
+        let components = DateComponents(
+            hour: safeMinute / 60,
+            minute: safeMinute % 60,
+            second: 0
+        )
+
+        guard let result = calendar.nextDate(
+            after: searchStart,
+            matching: components,
+            matchingPolicy: .nextTime,
+            repeatedTimePolicy: .first,
+            direction: .forward
+        ),
+        calendar.isDate(result, inSameDayAs: dayStart)
+        else { return nil }
+
+        return result
+    }
+}
+
+private extension DateInterval {
+    func containsHalfOpen(_ date: Date) -> Bool {
+        date >= start && date < end
     }
 }

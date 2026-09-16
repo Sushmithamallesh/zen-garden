@@ -43,6 +43,9 @@ build_arguments=(-c release --disable-sandbox)
 if $universal; then
   build_arguments+=(--arch arm64 --arch x86_64)
 fi
+if [[ "${ZEN_GARDEN_WARNINGS_AS_ERRORS:-0}" == "1" ]]; then
+  build_arguments+=(-Xswiftc -warnings-as-errors)
+fi
 
 swift build "${build_arguments[@]}"
 binary_directory="$(swift build "${build_arguments[@]}" --show-bin-path)"

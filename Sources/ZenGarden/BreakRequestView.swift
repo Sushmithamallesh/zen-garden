@@ -32,6 +32,16 @@ struct BreakRequestView: View {
                 reasonIsFocused = true
             }
         }
+        .onChange(of: enabledDomains) { _ in
+            if !enabledDomains.contains(selectedDomain) {
+                selectedDomain = enabledDomains.first ?? ""
+            }
+        }
+        .onChange(of: reason) { newValue in
+            if newValue.count > TemporaryAccessPolicy.maximumReasonLength {
+                reason = String(newValue.prefix(TemporaryAccessPolicy.maximumReasonLength))
+            }
+        }
     }
 
     private var compactContent: some View {
@@ -61,15 +71,22 @@ struct BreakRequestView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 fieldLabel("Website")
-                Picker("Website", selection: $selectedDomain) {
-                    ForEach(enabledDomains, id: \.self) { domain in
-                        Text(domain).tag(domain)
+                if enabledDomains.isEmpty {
+                    Text("No blocked websites available")
+                        .font(GardenTypography.body(11, weight: .medium))
+                        .foregroundStyle(GardenTheme.secondaryText)
+                        .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                } else {
+                    Picker("Website", selection: $selectedDomain) {
+                        ForEach(enabledDomains, id: \.self) { domain in
+                            Text(domain).tag(domain)
+                        }
                     }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -148,14 +165,21 @@ struct BreakRequestView: View {
 
             VStack(alignment: .leading, spacing: 7) {
                 fieldLabel("Website")
-                Picker("Website", selection: $selectedDomain) {
-                    ForEach(enabledDomains, id: \.self) { domain in
-                        Text(domain).tag(domain)
+                if enabledDomains.isEmpty {
+                    Text("No blocked websites available")
+                        .font(GardenTypography.body(12, weight: .medium))
+                        .foregroundStyle(GardenTheme.secondaryText)
+                        .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                } else {
+                    Picker("Website", selection: $selectedDomain) {
+                        ForEach(enabledDomains, id: \.self) { domain in
+                            Text(domain).tag(domain)
+                        }
                     }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             VStack(alignment: .leading, spacing: 7) {
@@ -200,6 +224,10 @@ struct BreakRequestView: View {
 
                 Spacer()
 
+                Button("Cancel", action: onComplete)
+                    .buttonStyle(SoftButtonStyle())
+                    .keyboardShortcut(.cancelAction)
+
                 Button("Unblock for \(duration) min", action: submit)
                     .buttonStyle(GardenPrimaryButtonStyle(compact: true))
                     .disabled(!canSubmit)
@@ -229,6 +257,7 @@ struct BreakRequestView: View {
         model.settings.focusState().isActive
             && !selectedDomain.isEmpty
             && !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && reason.count <= TemporaryAccessPolicy.maximumReasonLength
     }
 
     private func fieldLabel(_ text: String) -> some View {
@@ -258,7 +287,9 @@ struct BreakRequestView: View {
             return
         }
         guard canSubmit else {
-            validationMessage = "Choose a website and enter a reason."
+            validationMessage = enabledDomains.isEmpty
+                ? "Add and enable a blocked website first."
+                : "Choose a website and enter a reason."
             return
         }
         guard model.settings.requestBreak(

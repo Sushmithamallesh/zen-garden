@@ -1,7 +1,7 @@
 # Security review
 
-Last reviewed: 2026-09-10  
-Reviewed revision: `ec029b051e7e520320f036fff519b4d5e1d33d3e`
+Last reviewed: 2026-09-15
+Review basis: source tree through the 2026-09-15 reliability pass
 
 This is a source and build review of the public preview. It is not a penetration
 test or a claim that Zen Garden is tamper-proof.
@@ -17,7 +17,7 @@ test or a claim that Zen Garden is tamper-proof.
 
 ## Verified
 
-- 21 core assertions and 19 store assertions pass.
+- 32 core assertions and 29 store assertions pass.
 - Production and warnings-as-errors debug builds succeed.
 - Property lists validate and the built app passes strict code-seal verification.
 - SwiftPM has no third-party dependencies; the binary links only Apple/system
@@ -56,7 +56,8 @@ test or a claim that Zen Garden is tamper-proof.
 4. **The app is not sandboxed.** The reviewed source is deliberately narrow, but
    macOS does not constrain the preview to those behaviors through App Sandbox.
 5. **Reasons are local plain text.** Temporary-access reasons live in UserDefaults
-   for up to 90 days, and input length is not currently capped.
+   for up to 90 days. Input is capped at 500 characters, but it is not encrypted
+   separately from the user's macOS account data.
 
 These are tracked product and hardening gaps, not evidence of remote code
 execution, privilege escalation, credential theft, or data exfiltration in the

@@ -3,7 +3,6 @@ import SwiftUI
 
 private struct ExternalCommandHandler: ViewModifier {
     @EnvironmentObject private var model: AppModel
-    @Environment(\.openWindow) private var openWindow
 
     func body(content: Content) -> some View {
         content.onOpenURL { url in
@@ -11,13 +10,11 @@ private struct ExternalCommandHandler: ViewModifier {
 
             switch url.host?.lowercased() {
             case "request-break":
-                openWindow(id: "break-request")
-                NSApp.activate(ignoringOtherApps: true)
+                model.windowRouter.openBreakRequestWindow()
             case "resume":
                 model.settings.endAllBreaks()
             case "open":
-                openWindow(id: "main")
-                WindowController.showMainWindow()
+                model.windowRouter.openMainWindow()
             default:
                 break
             }

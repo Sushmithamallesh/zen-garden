@@ -24,4 +24,9 @@ jobs:
         run: ./scripts/test-core.sh
 
       - name: Compile the app
+        env:
+          ZEN_GARDEN_WARNINGS_AS_ERRORS: "1"
         run: ./scripts/build-app.sh
+
+      - name: Verify packaged downloads
+        run: ./scripts/verify-build.sh

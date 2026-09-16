@@ -90,7 +90,7 @@ struct BlockedWebsiteList: View {
                     }
                     .padding(.horizontal, 12)
                 }
-                .frame(height: min(CGFloat(displayedWebsites.count) * 43, 270))
+                .frame(height: min(CGFloat(displayedWebsites.count) * 47, 270))
                 .scrollIndicators(.hidden)
                 .background(GardenTheme.ricePaper.opacity(0.28))
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -140,10 +140,15 @@ private struct WebsiteRow: View {
                 Image(systemName: isLocked ? "lock.fill" : (website.isEnabled ? "checkmark.circle.fill" : "circle"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle((website.isEnabled || isLocked) ? GardenTheme.moss : GardenTheme.secondaryText)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 40, height: 40)
             }
             .buttonStyle(.plain)
             .help(isLocked ? "Locked on Sundays" : (website.isEnabled ? "Disable" : "Enable"))
+            .accessibilityLabel(
+                isLocked
+                    ? "\(website.domain), locked on Sundays"
+                    : "\(website.isEnabled ? "Disable" : "Enable") \(website.domain)"
+            )
 
             Button {
                 model.settings.deleteWebsite(id: website.id)
@@ -151,10 +156,11 @@ private struct WebsiteRow: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(GardenTheme.secondaryText.opacity(isHovering ? 1 : 0.72))
-                    .frame(width: 36, height: 36)
+                    .frame(width: 40, height: 40)
             }
             .buttonStyle(.plain)
             .help("Remove \(website.domain)")
+            .accessibilityLabel("Remove \(website.domain)")
             .disabled(isLocked)
         }
         .padding(.vertical, 3)

@@ -40,27 +40,21 @@ final class SettingsStore: ObservableObject {
 
         if let data = defaults.data(forKey: Key.websites),
            let decoded = try? decoder.decode([BlockedWebsite].self, from: data) {
-            websites = decoded
+            websites = Self.sanitizedWebsites(decoded)
         } else {
-            websites = [
-                BlockedWebsite(domain: "instagram.com"),
-                BlockedWebsite(domain: "reddit.com"),
-                BlockedWebsite(domain: "x.com"),
-                BlockedWebsite(domain: "tiktok.com"),
-                BlockedWebsite(domain: "youtube.com")
-            ]
+            websites = Self.defaultWebsites
         }
 
         if let data = defaults.data(forKey: Key.schedules),
            let decoded = try? decoder.decode([FocusSchedule].self, from: data) {
-            schedules = decoded
+            schedules = Self.sanitizedSchedules(decoded)
         } else {
             schedules = [.workday]
         }
 
         if let data = defaults.data(forKey: Key.breakRecords),
            let decoded = try? decoder.decode([BreakRecord].self, from: data) {
-            breakRecords = decoded
+            breakRecords = Self.sanitizedBreakRecords(decoded)
         } else {
             breakRecords = []
         }
@@ -68,10 +62,14 @@ final class SettingsStore: ObservableObject {
         manualSessionStartedAt = defaults.object(forKey: Key.manualSessionStartedAt) as? Date
         manualSessionEndsAt = defaults.object(forKey: Key.manualSessionEndsAt) as? Date
         dailyFocusEnabled = defaults.object(forKey: Key.dailyFocusEnabled) as? Bool ?? true
-        dailyStartMinute = defaults.object(forKey: Key.dailyStartMinute) as? Int
-            ?? DailyFocusPolicy.defaultStartMinute
-        dailyCutoffMinute = defaults.object(forKey: Key.dailyCutoffMinute) as? Int
-            ?? DailyFocusPolicy.defaultCutoffMinute
+        dailyStartMinute = Self.validMinute(
+            defaults.object(forKey: Key.dailyStartMinute) as? Int
+                ?? DailyFocusPolicy.defaultStartMinute
+        )
+        dailyCutoffMinute = Self.validMinute(
+            defaults.object(forKey: Key.dailyCutoffMinute) as? Int
+                ?? DailyFocusPolicy.defaultCutoffMinute
+        )
 
         // Version one allowed an unaccounted global pause. It is intentionally
         // retired now that every exception requires a reason.
@@ -121,10 +119,11 @@ final class SettingsStore: ObservableObject {
         persistSession()
     }
 
-    func endManualSession() {
+    func endManualSession(at date: Date = Date()) {
         manualSessionStartedAt = nil
         manualSessionEndsAt = nil
         persistSession()
+        endAllBreaks(at: date)
     }
 
     @discardableResult
@@ -134,10 +133,9 @@ final class SettingsStore: ObservableObject {
         minutes: Int,
         now: Date = Date()
     ) -> Bool {
-        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
         let focus = focusState(at: now)
-        guard !trimmedReason.isEmpty,
-              focus.isActive,
+        guard focus.isActive,
+              let normalizedReason = TemporaryAccessPolicy.normalizedReason(reason),
               let domain = DomainMatcher.normalizedDomain(from: input),
               !isDomainLocked(domain, at: now),
               websites.contains(where: { $0.isEnabled && $0.domain == domain }),
@@ -154,7 +152,7 @@ final class SettingsStore: ObservableObject {
         breakRecords.append(
             BreakRecord(
                 domain: domain,
-                reason: trimmedReason,
+                reason: normalizedReason,
                 requestedAt: now,
                 scheduledEnd: end
             )
@@ -234,16 +232,19 @@ final class SettingsStore: ObservableObject {
     func setDailyFocusEnabled(_ enabled: Bool) {
         dailyFocusEnabled = enabled
         defaults.set(enabled, forKey: Key.dailyFocusEnabled)
+        endAllBreaks()
     }
 
     func setDailyStartMinute(_ minute: Int) {
         dailyStartMinute = min(max(minute, 0), (24 * 60) - 1)
         defaults.set(dailyStartMinute, forKey: Key.dailyStartMinute)
+        endAllBreaks()
     }
 
     func setDailyCutoffMinute(_ minute: Int) {
         dailyCutoffMinute = min(max(minute, 0), (24 * 60) - 1)
         defaults.set(dailyCutoffMinute, forKey: Key.dailyCutoffMinute)
+        endAllBreaks()
     }
 
     @discardableResult
@@ -258,14 +259,20 @@ final class SettingsStore: ObservableObject {
         return true
     }
 
-    func setWebsiteEnabled(id: UUID, isEnabled: Bool) {
+    func setWebsiteEnabled(id: UUID, isEnabled: Bool, at date: Date = Date()) {
         guard let index = websites.firstIndex(where: { $0.id == id }) else { return }
+        let domain = websites[index].domain
         websites[index].isEnabled = isEnabled
+        if !isEnabled {
+            endBreaks(for: domain, at: date)
+        }
         persistWebsites()
     }
 
-    func deleteWebsite(id: UUID) {
+    func deleteWebsite(id: UUID, at date: Date = Date()) {
+        guard let domain = websites.first(where: { $0.id == id })?.domain else { return }
         websites.removeAll { $0.id == id }
+        endBreaks(for: domain, at: date)
         persistWebsites()
     }
 
@@ -279,21 +286,42 @@ final class SettingsStore: ObservableObject {
                 isEnabled: true
             )
         )
+        endAllBreaks()
         persistSchedules()
     }
 
     func updateSchedule(id: UUID, mutate: (inout FocusSchedule) -> Void) {
         guard let index = schedules.firstIndex(where: { $0.id == id }) else { return }
+        let previous = schedules[index]
         mutate(&schedules[index])
+        schedules[index] = Self.sanitizedSchedule(schedules[index])
+        let updated = schedules[index]
+        if previous.startMinute != updated.startMinute
+            || previous.endMinute != updated.endMinute
+            || previous.weekdays != updated.weekdays
+            || previous.isEnabled != updated.isEnabled {
+            endAllBreaks()
+        }
         persistSchedules()
     }
 
     func deleteSchedule(id: UUID) {
         schedules.removeAll { $0.id == id }
+        endAllBreaks()
         persistSchedules()
     }
 
     func performMaintenance(at date: Date) {
+        let sessionIsIncomplete = (manualSessionStartedAt == nil) != (manualSessionEndsAt == nil)
+        let sessionHasInvalidOrder = manualSessionStartedAt.map { start in
+            manualSessionEndsAt.map { $0 <= start } ?? false
+        } ?? false
+        if sessionIsIncomplete || sessionHasInvalidOrder {
+            manualSessionStartedAt = nil
+            manualSessionEndsAt = nil
+            persistSession()
+        }
+
         if let manualEnd = manualSessionEndsAt, manualEnd <= date {
             manualSessionStartedAt = nil
             manualSessionEndsAt = nil
@@ -309,11 +337,15 @@ final class SettingsStore: ObservableObject {
     }
 
     private func persistWebsites() {
-        defaults.set(try? encoder.encode(websites), forKey: Key.websites)
+        if let data = try? encoder.encode(websites) {
+            defaults.set(data, forKey: Key.websites)
+        }
     }
 
     private func persistSchedules() {
-        defaults.set(try? encoder.encode(schedules), forKey: Key.schedules)
+        if let data = try? encoder.encode(schedules) {
+            defaults.set(data, forKey: Key.schedules)
+        }
     }
 
     private func persistSession() {
@@ -322,6 +354,87 @@ final class SettingsStore: ObservableObject {
     }
 
     private func persistBreakRecords() {
-        defaults.set(try? encoder.encode(breakRecords), forKey: Key.breakRecords)
+        if let data = try? encoder.encode(breakRecords) {
+            defaults.set(data, forKey: Key.breakRecords)
+        }
+    }
+
+    private func endBreaks(for domain: String, at date: Date = Date()) {
+        var changed = false
+        for index in breakRecords.indices
+        where breakRecords[index].domain == domain && breakRecords[index].isActive(at: date) {
+            breakRecords[index].endedAt = date
+            changed = true
+        }
+        if changed { persistBreakRecords() }
+    }
+
+    private static let defaultWebsites = [
+        BlockedWebsite(domain: "instagram.com"),
+        BlockedWebsite(domain: "reddit.com"),
+        BlockedWebsite(domain: "x.com"),
+        BlockedWebsite(domain: "tiktok.com"),
+        BlockedWebsite(domain: "youtube.com")
+    ]
+
+    private static func validMinute(_ minute: Int) -> Int {
+        min(max(minute, 0), (24 * 60) - 1)
+    }
+
+    private static func sanitizedWebsites(_ values: [BlockedWebsite]) -> [BlockedWebsite] {
+        var seen: Set<String> = []
+        return values.compactMap { value in
+            guard let domain = DomainMatcher.normalizedDomain(from: value.domain),
+                  seen.insert(domain).inserted
+            else { return nil }
+
+            return BlockedWebsite(id: value.id, domain: domain, isEnabled: value.isEnabled)
+        }
+    }
+
+    private static func sanitizedSchedule(_ value: FocusSchedule) -> FocusSchedule {
+        var result = value
+        result.startMinute = validMinute(value.startMinute)
+        result.endMinute = validMinute(value.endMinute)
+        result.weekdays = Set(value.weekdays.filter { (1...7).contains($0) })
+        if result.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            result.name = "Schedule"
+        }
+        return result
+    }
+
+    private static func sanitizedSchedules(_ values: [FocusSchedule]) -> [FocusSchedule] {
+        var seenIDs: Set<UUID> = []
+        return values.map { value in
+            var result = sanitizedSchedule(value)
+            if !seenIDs.insert(result.id).inserted {
+                result.id = UUID()
+                seenIDs.insert(result.id)
+            }
+            return result
+        }
+    }
+
+    private static func sanitizedBreakRecords(_ values: [BreakRecord]) -> [BreakRecord] {
+        var seenIDs: Set<UUID> = []
+        return values.compactMap { value in
+            guard let domain = DomainMatcher.normalizedDomain(from: value.domain),
+                  let reason = TemporaryAccessPolicy.normalizedReason(value.reason),
+                  value.scheduledEnd > value.requestedAt
+            else { return nil }
+
+            var result = value
+            if !seenIDs.insert(result.id).inserted {
+                result.id = UUID()
+                seenIDs.insert(result.id)
+            }
+            result.domain = domain
+            result.reason = reason
+            if let endedAt = value.endedAt, endedAt < value.requestedAt {
+                result.endedAt = value.requestedAt
+            }
+            return result
+        }
+        .sorted { $0.requestedAt > $1.requestedAt }
     }
 }

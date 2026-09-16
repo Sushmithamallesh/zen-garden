@@ -9,6 +9,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let statusItem: NSStatusItem
     private let popover: NSPopover
     private let hostingController: NSHostingController<AnyView>
+    private var globalMouseMonitor: Any?
+    private var localKeyMonitor: Any?
 
     init(model: AppModel) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -32,6 +34,8 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             button.image = image
             button.imagePosition = .imageOnly
             button.toolTip = "Zen Garden"
+            button.setAccessibilityLabel("Zen Garden")
+            button.setAccessibilityHelp("Open focus controls")
             button.target = self
             button.action = #selector(togglePopover(_:))
         }
@@ -52,7 +56,56 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
 
         updatePopoverSize()
+        popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+    }
+
+    func popoverDidShow(_ notification: Notification) {
+        installDismissalMonitors()
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        removeDismissalMonitors()
+    }
+
+    /// `.transient` handles normal clicks in the current app, but AppKit does
+    /// not dismiss a transient popover when another status item opens a menu.
+    /// A global mouse monitor covers that system-menu edge case without
+    /// interfering with controls and menus inside this popover.
+    private func installDismissalMonitors() {
+        removeDismissalMonitors()
+
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.closePopover()
+            }
+        }
+
+        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.keyCode == 53, self?.popover.isShown == true else {
+                return event
+            }
+            self?.closePopover()
+            return nil
+        }
+    }
+
+    private func removeDismissalMonitors() {
+        if let globalMouseMonitor {
+            NSEvent.removeMonitor(globalMouseMonitor)
+            self.globalMouseMonitor = nil
+        }
+        if let localKeyMonitor {
+            NSEvent.removeMonitor(localKeyMonitor)
+            self.localKeyMonitor = nil
+        }
+    }
+
+    private func closePopover() {
+        guard popover.isShown else { return }
+        popover.performClose(nil)
     }
 
     private func updatePopoverSize() {

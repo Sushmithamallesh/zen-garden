@@ -28,6 +28,10 @@ service, or remote server.
 3. Add or remove websites from the blocklist.
 4. Leave Zen Garden running in the menu bar.
 
+Closing the dashboard—or pressing Command-Q—keeps the menu-bar blocker
+running. To stop it completely, open the leaf menu, choose the ellipsis, then
+choose **Quit Zen Garden**.
+
 The default schedule starts automatically. You can also start a 25, 50, or
 90-minute session from the menu bar at any time.
 
@@ -172,10 +176,11 @@ You can also open `Package.swift` in Xcode and run the `ZenGarden` scheme.
 | Path | Contents |
 | --- | --- |
 | `Sources/ZenGarden` | SwiftUI app, browser integration, settings, and bundled resources |
-| `scripts` | Core tests, app build, icon rendering, and release packaging |
+| `scripts` | Core tests, app build, packaged-build verification, icon rendering, and release packaging |
 | `raycast` | Three ready-to-import Raycast Script Commands |
 | `.github/workflows` | CI and GitHub Release automation |
 | `docs/RELEASING.md` | Maintainer release checklist |
+| `docs/QA.md` | Automated coverage and manual macOS release matrix |
 
 ## Limits
 
