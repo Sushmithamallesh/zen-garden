@@ -34,7 +34,7 @@ release before promoting a preview to a stable release.
 - Verify weekday activation at exactly the configured start and end times.
 - Wake the Mac during an active window and confirm blocking resumes immediately.
 - Confirm Saturday is free and Sunday is active from midnight to midnight.
-- Confirm `x.com` and `twitter.com` cannot be disabled, removed, or temporarily unblocked on Sunday.
+- Confirm `x.com` follows the normal reason-gated temporary-access flow on Sunday.
 - Request access using whitespace, multiline text, emoji, and a 500-character reason.
 - Disable or delete a site during its temporary exception. The exception ends.
 - Sleep through an exception's expiry and confirm the site is blocked after wake.

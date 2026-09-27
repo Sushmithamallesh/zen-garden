@@ -270,37 +270,32 @@ struct StoreTests {
             weeklyStore.focusState(at: sundayNoon, calendar: policyCalendar).source == .daily,
             "keeps the automatic schedule active all Sunday"
         )
-        let sundayWebsites = weeklyStore.websitesForBlocking(
-            at: sundayNoon,
-            calendar: policyCalendar
+        expect(
+            weeklyStore.availableBreakDomains(at: sundayNoon, calendar: policyCalendar).contains("x.com"),
+            "keeps x.com available for reason-gated access on Sunday"
         )
         expect(
-            sundayWebsites.contains { $0.domain == "x.com" && $0.isEnabled }
-                && sundayWebsites.contains { $0.domain == "twitter.com" && $0.isEnabled },
-            "enforces both Twitter domains on Sunday"
-        )
-        expect(
-            !weeklyStore.requestBreak(
+            weeklyStore.requestBreak(
                 domain: "x.com",
-                reason: "Try to bypass Sunday",
+                reason: "Check a message",
                 minutes: 10,
                 now: sundayNoon
             ),
-            "rejects Twitter access requests on Sunday"
-        )
-        expect(
-            !weeklyStore.availableBreakDomains(at: sundayNoon, calendar: policyCalendar).contains("x.com"),
-            "removes Twitter from Sunday break choices"
+            "allows a reason-gated x.com break on Sunday"
         )
         weeklyStore.setDailyFocusEnabled(false)
         expect(
-            weeklyStore.focusState(at: sundayNoon, calendar: policyCalendar).source == .daily,
-            "keeps the Sunday lock active when weekday blocking is disabled"
+            weeklyStore.focusState(at: sundayNoon, calendar: policyCalendar) == .inactive,
+            "turns off Sunday focus when automatic blocking is disabled"
         )
+        weeklyStore.setDailyFocusEnabled(true)
+        let sundaySevenPM = policyCalendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 23, hour: 19)
+        )!
         expect(
-            !weeklyStore.finishDay(at: sundayNoon, calendar: policyCalendar)
-                && weeklyStore.focusState(at: sundayNoon, calendar: policyCalendar).source == .daily,
-            "keeps Sunday focus active through midnight"
+            weeklyStore.finishDay(at: sundaySevenPM, calendar: policyCalendar)
+                && weeklyStore.focusState(at: sundaySevenPM, calendar: policyCalendar) == .inactive,
+            "lets a user finish Sunday focus for the day"
         )
 
         let invalidSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"

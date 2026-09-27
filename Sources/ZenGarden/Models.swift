@@ -188,26 +188,6 @@ enum DailyFocusPolicy {
     }
 }
 
-enum SundayLockPolicy {
-    static let domains = ["x.com", "twitter.com"]
-
-    static func isActive(at date: Date, calendar: Calendar = .current) -> Bool {
-        calendar.component(.weekday, from: date) == 1
-    }
-
-    static func isLocked(
-        domain input: String,
-        at date: Date,
-        calendar: Calendar = .current
-    ) -> Bool {
-        guard isActive(at: date, calendar: calendar),
-              let domain = DomainMatcher.normalizedDomain(from: input)
-        else { return false }
-
-        return domains.contains(domain)
-    }
-}
-
 enum BlockPageDestination {
     static func inlinePage(html: String, domain: String) -> String {
         let encodedPage = Data(html.utf8).base64EncodedString()

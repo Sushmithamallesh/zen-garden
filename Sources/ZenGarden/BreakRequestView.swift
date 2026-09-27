@@ -282,10 +282,6 @@ struct BreakRequestView: View {
             validationMessage = "Focus is no longer active."
             return
         }
-        if model.settings.isDomainLocked(selectedDomain) {
-            validationMessage = "Twitter stays blocked all day Sunday."
-            return
-        }
         guard canSubmit else {
             validationMessage = enabledDomains.isEmpty
                 ? "Add and enable a blocked website first."

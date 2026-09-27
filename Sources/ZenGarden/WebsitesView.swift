@@ -96,11 +96,6 @@ struct BlockedWebsiteList: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
 
-            if SundayLockPolicy.isActive(at: Date()) {
-                Label("Twitter stays blocked on Sundays", systemImage: "lock.fill")
-                    .font(GardenTypography.body(10, weight: .medium))
-                    .foregroundStyle(GardenTheme.secondaryText)
-            }
         }
         .zenCard()
     }
@@ -123,8 +118,6 @@ private struct WebsiteRow: View {
     let website: BlockedWebsite
 
     var body: some View {
-        let isLocked = model.settings.isDomainLocked(website.domain)
-
         HStack(spacing: 11) {
             Text(website.domain)
                 .font(GardenTypography.body(13, weight: .medium))
@@ -133,22 +126,16 @@ private struct WebsiteRow: View {
             Spacer()
 
             Button {
-                if !isLocked {
-                    model.settings.setWebsiteEnabled(id: website.id, isEnabled: !website.isEnabled)
-                }
+                model.settings.setWebsiteEnabled(id: website.id, isEnabled: !website.isEnabled)
             } label: {
-                Image(systemName: isLocked ? "lock.fill" : (website.isEnabled ? "checkmark.circle.fill" : "circle"))
+                Image(systemName: website.isEnabled ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle((website.isEnabled || isLocked) ? GardenTheme.moss : GardenTheme.secondaryText)
+                    .foregroundStyle(website.isEnabled ? GardenTheme.moss : GardenTheme.secondaryText)
                     .frame(width: 40, height: 40)
             }
             .buttonStyle(.plain)
-            .help(isLocked ? "Locked on Sundays" : (website.isEnabled ? "Disable" : "Enable"))
-            .accessibilityLabel(
-                isLocked
-                    ? "\(website.domain), locked on Sundays"
-                    : "\(website.isEnabled ? "Disable" : "Enable") \(website.domain)"
-            )
+            .help(website.isEnabled ? "Disable" : "Enable")
+            .accessibilityLabel("\(website.isEnabled ? "Disable" : "Enable") \(website.domain)")
 
             Button {
                 model.settings.deleteWebsite(id: website.id)
@@ -161,7 +148,6 @@ private struct WebsiteRow: View {
             .buttonStyle(.plain)
             .help("Remove \(website.domain)")
             .accessibilityLabel("Remove \(website.domain)")
-            .disabled(isLocked)
         }
         .padding(.vertical, 3)
         .padding(.leading, 2)

@@ -274,8 +274,7 @@ final class BrowserBlocker: ObservableObject {
               )
         else { return }
 
-        if !settings.isDomainLocked(match.domain, at: now),
-           settings.isDomainTemporarilyAllowed(match.domain, at: now) {
+        if settings.isDomainTemporarilyAllowed(match.domain, at: now) {
             statusText = "Website temporarily unblocked"
             detailText = "\(match.domain) is temporarily unblocked."
             return

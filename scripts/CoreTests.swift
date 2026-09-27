@@ -204,17 +204,6 @@ struct CoreTests {
             )?.duration == 24 * 60 * 60,
             "keeps automatic blocking active all Sunday"
         )
-        expect(
-            SundayLockPolicy.isLocked(domain: "x.com", at: sundayNoon, calendar: calendar)
-                && SundayLockPolicy.isLocked(domain: "twitter.com", at: sundayNoon, calendar: calendar),
-            "locks both Twitter domains on Sunday"
-        )
-        expect(
-            !SundayLockPolicy.isLocked(domain: "reddit.com", at: sundayNoon, calendar: calendar)
-                && !SundayLockPolicy.isLocked(domain: "x.com", at: saturdayNoon, calendar: calendar),
-            "limits the permanent lock to Twitter on Sunday"
-        )
-
         let saturdayOneAM = calendar.date(
             from: DateComponents(year: 2026, month: 8, day: 22, hour: 1)
         )!

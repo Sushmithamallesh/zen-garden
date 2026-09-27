@@ -10,7 +10,6 @@ struct EndOfDayReviewView: View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             let now = context.date
             let records = model.settings.breakRecords(on: now)
-            let isSunday = SundayLockPolicy.isActive(at: now)
             let isComplete = model.settings.isDayComplete(at: now)
 
             ZStack {
@@ -21,7 +20,7 @@ struct EndOfDayReviewView: View {
                         reviewHeader(now: now, count: records.count, isComplete: isComplete)
                         summaryStrip(records: records, now: now)
                         breakHistory(records: records, now: now)
-                        footer(now: now, isSunday: isSunday, isComplete: isComplete)
+                        footer(now: now, isComplete: isComplete)
                     }
                     .frame(maxWidth: 560, alignment: .leading)
                     .padding(28)
@@ -123,16 +122,8 @@ struct EndOfDayReviewView: View {
     }
 
     @ViewBuilder
-    private func footer(now: Date, isSunday: Bool, isComplete: Bool) -> some View {
-        if isSunday {
-            Label("Sunday focus stays on until midnight.", systemImage: "lock.fill")
-                .font(GardenTypography.body(12, weight: .medium))
-                .foregroundStyle(GardenTheme.matchaShadow)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(GardenTheme.matchaPale.opacity(0.31))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        } else if isComplete {
+    private func footer(now: Date, isComplete: Bool) -> some View {
+        if isComplete {
             HStack {
                 Label("Blocking is off until tomorrow.", systemImage: "checkmark.circle.fill")
                     .font(GardenTypography.body(12, weight: .medium))
