@@ -54,6 +54,35 @@ struct StoreTests {
             "removes preferences from the retired email feature"
         )
         expect(
+            dailyStore.dailyStartMinute == 0 && dailyStore.dailyCutoffMinute == 0,
+            "uses all-day weekday blocking by default"
+        )
+        expect(
+            dailyStore.focusState(at: sixPM, calendar: calendar).source == .daily,
+            "keeps the default weekday focus active into the evening"
+        )
+        expect(
+            dailyStore.websites.contains { $0.domain == "tiktok.com" && $0.isEnabled },
+            "includes TikTok in the default blocked websites"
+        )
+
+        let migrationSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
+        let migrationDefaults = UserDefaults(suiteName: migrationSuite)!
+        migrationDefaults.removePersistentDomain(forName: migrationSuite)
+        defer { migrationDefaults.removePersistentDomain(forName: migrationSuite) }
+        migrationDefaults.set(7 * 60, forKey: "zenGarden.dailyStartMinute.v1")
+        migrationDefaults.set(17 * 60, forKey: "zenGarden.dailyCutoffMinute.v1")
+        let migratedStore = SettingsStore(defaults: migrationDefaults)
+        expect(
+            migratedStore.dailyStartMinute == 0 && migratedStore.dailyCutoffMinute == 0,
+            "upgrades the former 7 AM–5 PM default to all-day blocking"
+        )
+
+        // Keep the remaining boundary and exception tests focused on the
+        // explicitly configured 7 AM–5 PM window.
+        dailyStore.setDailyStartMinute(7 * 60)
+        dailyStore.setDailyCutoffMinute(17 * 60)
+        expect(
             dailyStore.focusState(at: sixFiftyNineAM, calendar: calendar) == .inactive,
             "keeps daily blocking off before 7 AM"
         )
@@ -167,6 +196,7 @@ struct StoreTests {
         defer { overlapDefaults.removePersistentDomain(forName: overlapSuite) }
 
         let overlapStore = SettingsStore(defaults: overlapDefaults)
+        overlapStore.setDailyFocusEnabled(false)
         overlapStore.startSession(minutes: 120, now: fourPM)
         let overlapState = overlapStore.focusState(at: fourPM, calendar: calendar)
         expect(
@@ -201,7 +231,36 @@ struct StoreTests {
         let sundayNoon = policyCalendar.date(
             from: DateComponents(year: 2026, month: 8, day: 23, hour: 12)
         )!
+        let fridaySixFiftyNine = policyCalendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 21, hour: 18, minute: 59)
+        )!
+        let fridaySevenPM = policyCalendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 21, hour: 19)
+        )!
+        let saturdaySevenPM = policyCalendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 22, hour: 19)
+        )!
+        let mondayMorning = policyCalendar.date(
+            from: DateComponents(year: 2026, month: 8, day: 24, hour: 9)
+        )!
         let weeklyStore = SettingsStore(defaults: weeklyDefaults)
+
+        expect(
+            !weeklyStore.isEndOfDayReviewAvailable(at: fridaySixFiftyNine, calendar: policyCalendar)
+                && weeklyStore.isEndOfDayReviewAvailable(at: fridaySevenPM, calendar: policyCalendar)
+                && !weeklyStore.isEndOfDayReviewAvailable(at: saturdaySevenPM, calendar: policyCalendar),
+            "offers the end-of-day review from 7 PM except on Saturday"
+        )
+        expect(
+            !weeklyStore.finishDay(at: fridaySixFiftyNine, calendar: policyCalendar),
+            "does not finish a day before the evening review"
+        )
+        expect(
+            weeklyStore.finishDay(at: fridaySevenPM, calendar: policyCalendar)
+                && weeklyStore.focusState(at: fridaySevenPM, calendar: policyCalendar) == .inactive
+                && weeklyStore.focusState(at: mondayMorning, calendar: policyCalendar).source == .daily,
+            "finishes weekday focus only through the end of that day"
+        )
 
         expect(
             weeklyStore.focusState(at: saturdayNoon, calendar: policyCalendar) == .inactive,
@@ -237,6 +296,11 @@ struct StoreTests {
         expect(
             weeklyStore.focusState(at: sundayNoon, calendar: policyCalendar).source == .daily,
             "keeps the Sunday lock active when weekday blocking is disabled"
+        )
+        expect(
+            !weeklyStore.finishDay(at: sundayNoon, calendar: policyCalendar)
+                && weeklyStore.focusState(at: sundayNoon, calendar: policyCalendar).source == .daily,
+            "keeps Sunday focus active through midnight"
         )
 
         let invalidSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"

@@ -170,6 +170,15 @@ struct CoreTests {
             ) == nil,
             "ends the daily boundary at its cutoff"
         )
+        expect(
+            DailyFocusPolicy.activeInterval(
+                containing: mondayEvening,
+                startMinute: DailyFocusPolicy.defaultStartMinute,
+                cutoffMinute: DailyFocusPolicy.defaultCutoffMinute,
+                calendar: calendar
+            )?.duration == 24 * 60 * 60,
+            "uses all-day blocking as the weekday default"
+        )
 
         let saturdayNoon = calendar.date(
             from: DateComponents(year: 2026, month: 8, day: 22, hour: 12)

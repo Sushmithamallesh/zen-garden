@@ -11,6 +11,7 @@ final class SettingsStore: ObservableObject {
     @Published private(set) var dailyFocusEnabled: Bool
     @Published private(set) var dailyStartMinute: Int
     @Published private(set) var dailyCutoffMinute: Int
+    @Published private(set) var completedFocusDay: Date?
 
     private let defaults: UserDefaults
     private let encoder = JSONEncoder()
@@ -26,6 +27,8 @@ final class SettingsStore: ObservableObject {
         static let dailyFocusEnabled = "zenGarden.dailyFocusEnabled.v1"
         static let dailyStartMinute = "zenGarden.dailyStartMinute.v1"
         static let dailyCutoffMinute = "zenGarden.dailyCutoffMinute.v1"
+        static let allDayDefaultMigration = "zenGarden.allDayDefaultMigration.v1"
+        static let completedFocusDay = "zenGarden.completedFocusDay.v1"
     }
 
     private static let retiredEmailPreferenceKeys = [
@@ -70,6 +73,9 @@ final class SettingsStore: ObservableObject {
             defaults.object(forKey: Key.dailyCutoffMinute) as? Int
                 ?? DailyFocusPolicy.defaultCutoffMinute
         )
+        completedFocusDay = defaults.object(forKey: Key.completedFocusDay) as? Date
+
+        migratePriorWeekdayDefaultToAllDay()
 
         // Version one allowed an unaccounted global pause. It is intentionally
         // retired now that every exception requires a reason.
@@ -78,7 +84,27 @@ final class SettingsStore: ObservableObject {
         performMaintenance(at: Date())
     }
 
+    /// Version one shipped with a 7 AM–5 PM weekday preset. Update only that
+    /// original preset, leaving any other deliberately chosen hours untouched.
+    private func migratePriorWeekdayDefaultToAllDay() {
+        guard !defaults.bool(forKey: Key.allDayDefaultMigration) else { return }
+
+        if dailyStartMinute == 7 * 60, dailyCutoffMinute == 17 * 60 {
+            dailyStartMinute = DailyFocusPolicy.defaultStartMinute
+            dailyCutoffMinute = DailyFocusPolicy.defaultCutoffMinute
+            defaults.set(dailyStartMinute, forKey: Key.dailyStartMinute)
+            defaults.set(dailyCutoffMinute, forKey: Key.dailyCutoffMinute)
+        }
+
+        defaults.set(true, forKey: Key.allDayDefaultMigration)
+    }
+
     func focusState(at date: Date = Date(), calendar: Calendar = .current) -> FocusState {
+        if isDayComplete(at: date, calendar: calendar),
+           !SundayLockPolicy.isActive(at: date, calendar: calendar) {
+            return .inactive
+        }
+
         var candidates: [(source: FocusSource, end: Date)] = []
 
         if (dailyFocusEnabled || SundayLockPolicy.isActive(at: date, calendar: calendar)),
@@ -124,6 +150,40 @@ final class SettingsStore: ObservableObject {
         manualSessionEndsAt = nil
         persistSession()
         endAllBreaks(at: date)
+    }
+
+    func isEndOfDayReviewAvailable(
+        at date: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Bool {
+        EndOfDayPolicy.isReviewAvailable(at: date, calendar: calendar)
+    }
+
+    func isDayComplete(
+        at date: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard let completedFocusDay else { return false }
+        return calendar.isDate(completedFocusDay, inSameDayAs: date)
+    }
+
+    /// Finishing a day is a deliberate, temporary override: it stops every
+    /// focus source until the next calendar day. Sunday remains protected by
+    /// its non-negotiable Twitter policy.
+    @discardableResult
+    func finishDay(
+        at date: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard EndOfDayPolicy.isReviewAvailable(at: date, calendar: calendar),
+              !SundayLockPolicy.isActive(at: date, calendar: calendar),
+              !isDayComplete(at: date, calendar: calendar)
+        else { return false }
+
+        completedFocusDay = calendar.startOfDay(for: date)
+        defaults.set(completedFocusDay, forKey: Key.completedFocusDay)
+        endAllBreaks(at: date)
+        return true
     }
 
     @discardableResult

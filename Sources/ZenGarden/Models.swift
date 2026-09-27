@@ -107,9 +107,29 @@ enum TemporaryAccessPolicy {
     }
 }
 
+enum EndOfDayPolicy {
+    static let reviewStartMinute = 19 * 60
+
+    /// The daily review is intentionally limited to days with an automatic
+    /// focus policy. Saturday is the user's free day.
+    static func isReviewAvailable(
+        at date: Date,
+        calendar: Calendar = .current
+    ) -> Bool {
+        let weekday = calendar.component(.weekday, from: date)
+        guard weekday != 7 else { return false }
+
+        let minute = (calendar.component(.hour, from: date) * 60)
+            + calendar.component(.minute, from: date)
+        return minute >= reviewStartMinute
+    }
+}
+
 enum DailyFocusPolicy {
-    static let defaultStartMinute = 7 * 60
-    static let defaultCutoffMinute = 17 * 60
+    // Matching start and cutoff times intentionally represent an all-day rule.
+    // Midnight makes the default clear in persisted settings and in the UI.
+    static let defaultStartMinute = 0
+    static let defaultCutoffMinute = 0
 
     static func activeInterval(
         containing date: Date,
@@ -133,7 +153,12 @@ enum DailyFocusPolicy {
 
         let safeStart = min(max(startMinute, 0), (24 * 60) - 1)
         let safeCutoff = min(max(cutoffMinute, 0), (24 * 60) - 1)
-        guard safeStart != safeCutoff else { return nil }
+        if safeStart == safeCutoff {
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: dayStart) else {
+                return nil
+            }
+            return DateInterval(start: dayStart, end: nextDay)
+        }
 
         if safeStart < safeCutoff {
             guard let start = WallClock.date(atMinute: safeStart, on: dayStart, calendar: calendar),

@@ -15,14 +15,17 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     init(model: AppModel) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         popover = NSPopover()
-        hostingController = NSHostingController(
-            rootView: AnyView(
-                MenuBarFocusView()
-                    .environmentObject(model)
-            )
-        )
+        hostingController = NSHostingController(rootView: AnyView(EmptyView()))
 
         super.init()
+
+        hostingController.rootView = AnyView(
+            MenuBarFocusView(onOpenDayReview: { [weak self, weak model] in
+                self?.closePopover()
+                model?.windowRouter.openEndOfDayReviewWindow()
+            })
+                .environmentObject(model)
+        )
 
         if let button = statusItem.button {
             let configuration = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)

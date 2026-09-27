@@ -26,6 +26,10 @@ final class WindowRouter {
         openWindow(id: "break-request")
     }
 
+    func openEndOfDayReviewWindow() {
+        openWindow(id: "end-of-day-review")
+    }
+
     private func openWindow(id: String) {
         guard let openWindowAction else {
             pendingWindowID = id
@@ -42,7 +46,14 @@ final class WindowRouter {
     }
 
     private func title(for id: String) -> String {
-        id == "break-request" ? "Unblock a Website" : "Zen Garden"
+        switch id {
+        case "break-request":
+            "Unblock a Website"
+        case "end-of-day-review":
+            "Today in Zen Garden"
+        default:
+            "Zen Garden"
+        }
     }
 }
 

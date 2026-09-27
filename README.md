@@ -64,7 +64,8 @@ for the ZIP alternative, checksums, and release notes.
 
 - Menu-bar controls for starting focus, unblocking one website, and resuming blocking
 - Reason-required, time-limited website access
-- Adjustable weekday blocking, initially set to 7:00 AM–5:00 PM
+- An end-of-day review after 7 PM, with every unblock and its reason
+- Adjustable weekday blocking, on all day by default
 - Saturday off and all-day Sunday focus by default
 - A Sunday rule that refuses temporary access to `x.com` and `twitter.com`
 - 25, 50, and 90-minute manual sessions
@@ -79,12 +80,18 @@ for the ZIP alternative, checksums, and release notes.
 
 | Day | Automatic behavior |
 | --- | --- |
-| Monday–Friday | Block enabled websites from 7:00 AM to 5:00 PM |
+| Monday–Friday | Block enabled websites all day |
 | Saturday | No automatic blocking |
 | Sunday | Block enabled websites all day; `x.com` and `twitter.com` cannot be temporarily unblocked |
 
-The weekday start and end times are editable. Manual sessions and custom
-schedules can add focus time outside these defaults.
+Weekday start and end times are editable. Matching times mean all-day
+blocking. Manual sessions and custom schedules can add focus time outside
+these defaults.
+
+After 7 PM on active days, the menu-bar panel offers a day review. It lists
+every website you temporarily unblocked, the reason, and total access time.
+Choosing **I’m done for today** stops normal blocking until midnight; Sunday
+focus remains on through midnight.
 
 ## How it works
 

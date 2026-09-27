@@ -40,6 +40,14 @@ struct ZenGardenApp: App {
                 .environmentObject(appDelegate.model)
         }
         .windowResizability(.contentSize)
+
+        Window("Today in Zen Garden", id: "end-of-day-review") {
+            EndOfDayReviewView()
+                .environmentObject(appDelegate.model)
+                .frame(minWidth: 560, minHeight: 560)
+        }
+        .defaultSize(width: 600, height: 680)
+        .windowResizability(.contentMinSize)
     }
 }
 

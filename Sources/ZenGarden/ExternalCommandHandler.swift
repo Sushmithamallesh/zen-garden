@@ -15,6 +15,8 @@ private struct ExternalCommandHandler: ViewModifier {
                 model.settings.endAllBreaks()
             case "open":
                 model.windowRouter.openMainWindow()
+            case "review":
+                model.windowRouter.openEndOfDayReviewWindow()
             default:
                 break
             }

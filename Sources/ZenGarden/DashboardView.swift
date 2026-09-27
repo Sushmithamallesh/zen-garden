@@ -196,6 +196,8 @@ struct MenuBarFocusView: View {
     @EnvironmentObject private var model: AppModel
     @State private var requestingBreak = false
 
+    let onOpenDayReview: () -> Void
+
     private let durations = [25, 50, 90]
 
     var body: some View {
@@ -208,6 +210,8 @@ struct MenuBarFocusView: View {
                         && !model.settings.isDomainTemporarilyAllowed($0.domain, at: context.date)
                 }
                 .count
+            let isDayComplete = model.settings.isDayComplete(at: context.date)
+            let canReviewDay = model.settings.isEndOfDayReviewAvailable(at: context.date)
 
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 10) {
@@ -223,7 +227,11 @@ struct MenuBarFocusView: View {
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Zen Garden")
                             .font(GardenTypography.body(13, weight: .semibold))
-                        Text(headerStatus(state: state, blockedCount: blockedCount))
+                        Text(headerStatus(
+                            state: state,
+                            blockedCount: blockedCount,
+                            isDayComplete: isDayComplete
+                        ))
                             .font(GardenTypography.body(10, weight: .medium))
                             .foregroundStyle(GardenTheme.secondaryText)
                     }
@@ -275,6 +283,28 @@ struct MenuBarFocusView: View {
                     .environmentObject(model)
                     .padding(10)
                 } else {
+                    if canReviewDay {
+                        Button(action: onOpenDayReview) {
+                            HStack(spacing: 9) {
+                                Image(systemName: isDayComplete ? "checkmark.circle.fill" : "sun.horizon.fill")
+                                    .font(.system(size: 12, weight: .semibold))
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(isDayComplete ? "Today is complete" : "I'm done for today")
+                                    Text(isDayComplete ? "View your check-in" : "Review your unblocks")
+                                        .font(GardenTypography.body(9, weight: .medium))
+                                        .opacity(0.76)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .opacity(0.58)
+                            }
+                        }
+                        .buttonStyle(MenuBarPrimaryButtonStyle())
+                        .padding(.horizontal, 10)
+                        .padding(.top, 10)
+                    }
+
                     if state.isActive {
                         VStack(alignment: .leading, spacing: 9) {
                             VStack(alignment: .leading, spacing: 6) {
@@ -430,9 +460,16 @@ struct MenuBarFocusView: View {
         model.windowRouter.openMainWindow()
     }
 
-    private func headerStatus(state: FocusState, blockedCount: Int) -> String {
+    private func headerStatus(
+        state: FocusState,
+        blockedCount: Int,
+        isDayComplete: Bool
+    ) -> String {
         if model.browserBlocker.permissionHelpNeeded {
             return "Browser access needed"
+        }
+        if isDayComplete {
+            return "Day complete"
         }
         return state.isActive ? blockedSiteLabel(blockedCount) : "Not blocking"
     }

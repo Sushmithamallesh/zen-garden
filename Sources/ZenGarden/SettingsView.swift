@@ -70,9 +70,9 @@ struct SettingsView: View {
 
                     HStack(alignment: .center, spacing: 18) {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Block on weekdays")
+                            Text("Automatic blocking")
                                 .font(GardenTypography.body(14, weight: .semibold))
-                            Text("Runs at these times Monday–Friday. Saturday is off; Sunday runs all day.")
+                            Text("All day Monday–Friday and Sunday. Saturday is off.")
                                 .font(GardenTypography.body(11))
                                 .foregroundStyle(GardenTheme.secondaryText)
                         }
@@ -89,7 +89,7 @@ struct SettingsView: View {
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .tint(GardenTheme.moss)
-                        .accessibilityLabel("Block on weekdays")
+                        .accessibilityLabel("Automatic blocking")
                     }
 
                     HStack(spacing: 20) {
@@ -130,6 +130,10 @@ struct SettingsView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
+
+                    Text("Matching start and end times keep weekday blocking on all day.")
+                        .font(GardenTypography.body(11))
+                        .foregroundStyle(GardenTheme.secondaryText)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .zenCard()
