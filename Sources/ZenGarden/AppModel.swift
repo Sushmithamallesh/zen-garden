@@ -139,7 +139,13 @@ enum LoginItemController {
     }
 
     static func enableByDefaultIfNeeded(defaults: UserDefaults = .standard) throws {
-        guard defaults.object(forKey: preferenceKey) == nil else { return }
+        // Keep an explicit opt-out, but do not let a stale preference hide a
+        // failed Service Management registration forever. This can happen when
+        // the app is first launched from a DMG and then moved to Applications.
+        let shouldEnable = defaults.object(forKey: preferenceKey) as? Bool ?? true
+        defaults.set(shouldEnable, forKey: preferenceKey)
+
+        guard shouldEnable else { return }
         try setEnabled(true, defaults: defaults)
     }
 
