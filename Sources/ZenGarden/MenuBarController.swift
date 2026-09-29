@@ -6,14 +6,17 @@ import SwiftUI
 /// window-style SwiftUI `MenuBarExtra` on macOS 26.
 @MainActor
 final class MenuBarController: NSObject, NSPopoverDelegate {
-    private let statusItem: NSStatusItem
+    private static let statusItemAutosaveName = "com.sushmithamallesh.zengarden.status-item"
+
+    private var statusItem: NSStatusItem!
     private let popover: NSPopover
     private let hostingController: NSHostingController<AnyView>
     private var globalMouseMonitor: Any?
     private var localKeyMonitor: Any?
+    private var statusItemVisibilityObserver: NSKeyValueObservation?
+    private var statusItemWatchdog: Timer?
 
     init(model: AppModel) {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         popover = NSPopover()
         hostingController = NSHostingController(rootView: AnyView(EmptyView()))
 
@@ -27,7 +30,34 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
                 .environmentObject(model)
         )
 
-        if let button = statusItem.button {
+        hostingController.sizingOptions = [.preferredContentSize]
+        popover.contentViewController = hostingController
+        popover.behavior = .transient
+        popover.animates = true
+        popover.delegate = self
+
+        installStatusItem()
+        updatePopoverSize()
+
+        // A third-party menu-bar utility or a macOS Space change can detach a
+        // status item while the owning app continues to run. Keep the leaf
+        // available rather than requiring a relaunch.
+        statusItemWatchdog = Timer.scheduledTimer(
+            withTimeInterval: 15,
+            repeats: true
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.ensureStatusItemIsAvailable()
+            }
+        }
+    }
+
+    private func installStatusItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        item.autosaveName = Self.statusItemAutosaveName
+        item.isVisible = true
+
+        if let button = item.button {
             let configuration = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
             let image = NSImage(
                 systemSymbolName: "leaf.fill",
@@ -43,12 +73,35 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
             button.action = #selector(togglePopover(_:))
         }
 
-        hostingController.sizingOptions = [.preferredContentSize]
-        popover.contentViewController = hostingController
-        popover.behavior = .transient
-        popover.animates = true
-        popover.delegate = self
-        updatePopoverSize()
+        statusItem = item
+        statusItemVisibilityObserver = item.observe(
+            \.isVisible,
+            options: [.new]
+        ) { [weak self] _, change in
+            guard change.newValue == false else { return }
+            DispatchQueue.main.async {
+                self?.ensureStatusItemIsAvailable()
+            }
+        }
+    }
+
+    private func ensureStatusItemIsAvailable() {
+        // `statusBar == nil` means AppKit has detached the item entirely. A
+        // false visibility value means it was removed from this menu bar. In
+        // both cases, recreate/restore it while preserving its saved position.
+        guard statusItem.statusBar != nil, statusItem.button != nil else {
+            closePopover()
+            if let statusItem {
+                NSStatusBar.system.removeStatusItem(statusItem)
+            }
+            statusItemVisibilityObserver?.invalidate()
+            installStatusItem()
+            return
+        }
+
+        if !statusItem.isVisible {
+            statusItem.isVisible = true
+        }
     }
 
     @objc

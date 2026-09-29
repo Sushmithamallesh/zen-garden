@@ -7,6 +7,10 @@ final class ZenGardenAppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Make the app an accessory process explicitly. `LSUIElement` handles
+        // this at launch, but setting it here prevents a restored window scene
+        // from changing the app's menu-bar-only behavior.
+        NSApp.setActivationPolicy(.accessory)
         NSApp.applicationIconImage = AppIconRenderer.make()
         do {
             try LoginItemController.enableByDefaultIfNeeded()
