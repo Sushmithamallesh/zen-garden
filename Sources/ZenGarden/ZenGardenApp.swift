@@ -20,6 +20,23 @@ final class ZenGardenAppDelegate: NSObject, NSApplicationDelegate {
         }
         menuBarController = MenuBarController(model: model)
     }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        menuBarController?.restoreStatusItem()
+    }
+
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows flag: Bool
+    ) -> Bool {
+        // A menu-bar app has no Dock window to surface automatically. When a
+        // user opens its .app again from Finder, make that action useful: put
+        // the leaf back in the bar and show the dashboard as a reliable
+        // fallback even if the status item was hidden by macOS.
+        menuBarController?.restoreStatusItem()
+        model.windowRouter.openMainWindow()
+        return true
+    }
 }
 
 @main

@@ -85,6 +85,13 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
     }
 
+    /// Restores the menu-bar affordance after Finder reopens the app or macOS
+    /// has changed Spaces. The app delegate also calls this as a fallback for
+    /// a menu-bar item that is no longer reachable by a click.
+    func restoreStatusItem() {
+        ensureStatusItemIsAvailable()
+    }
+
     private func ensureStatusItemIsAvailable() {
         // `statusBar == nil` means AppKit has detached the item entirely. A
         // false visibility value means it was removed from this menu bar. In
