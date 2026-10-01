@@ -6,8 +6,6 @@ import SwiftUI
 /// window-style SwiftUI `MenuBarExtra` on macOS 26.
 @MainActor
 final class MenuBarController: NSObject, NSPopoverDelegate {
-    private static let statusItemAutosaveName = "com.sushmithamallesh.zengarden.status-item"
-
     private var statusItem: NSStatusItem!
     private let popover: NSPopover
     private let hostingController: NSHostingController<AnyView>
@@ -15,6 +13,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private var localKeyMonitor: Any?
     private var statusItemVisibilityObserver: NSKeyValueObservation?
     private var statusItemWatchdog: Timer?
+    private var lastRecoveryAttempt = Date.distantPast
 
     init(model: AppModel) {
         popover = NSPopover()
@@ -54,7 +53,11 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
     private func installStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.autosaveName = Self.statusItemAutosaveName
+        // Do not assign an autosave name. AppKit persists a named item's
+        // placement and visibility, including a placement that macOS can no
+        // longer render after the menu bar changes. Zen Garden has one
+        // essential affordance, so each launch should request a fresh,
+        // visible status item instead.
         item.isVisible = true
 
         if let button = item.button {
@@ -93,22 +96,34 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func ensureStatusItemIsAvailable() {
-        // `statusBar == nil` means AppKit has detached the item entirely. A
-        // false visibility value means it was removed from this menu bar. In
-        // both cases, recreate/restore it while preserving its saved position.
-        guard statusItem.statusBar != nil, statusItem.button != nil else {
-            closePopover()
-            if let statusItem {
-                NSStatusBar.system.removeStatusItem(statusItem)
-            }
-            statusItemVisibilityObserver?.invalidate()
-            installStatusItem()
+        // `isVisible` remains true when macOS has no room to draw an item, so
+        // check the actual status-button attachment as well. Recreate only
+        // after a short cooldown: repeatedly re-adding an item while the bar
+        // is full causes flicker and does not create space.
+        guard
+            statusItem.statusBar != nil,
+            statusItem.button != nil,
+            statusItem.button?.window != nil
+        else {
+            recoverStatusItem()
             return
         }
 
         if !statusItem.isVisible {
             statusItem.isVisible = true
         }
+    }
+
+    private func recoverStatusItem() {
+        guard Date().timeIntervalSince(lastRecoveryAttempt) > 5 else { return }
+        lastRecoveryAttempt = Date()
+
+        closePopover()
+        if let statusItem {
+            NSStatusBar.system.removeStatusItem(statusItem)
+        }
+        statusItemVisibilityObserver?.invalidate()
+        installStatusItem()
     }
 
     @objc
