@@ -11,9 +11,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let hostingController: NSHostingController<AnyView>
     private var globalMouseMonitor: Any?
     private var localKeyMonitor: Any?
-    private var statusItemVisibilityObserver: NSKeyValueObservation?
-    private var statusItemWatchdog: Timer?
-    private var lastRecoveryAttempt = Date.distantPast
 
     init(model: AppModel) {
         popover = NSPopover()
@@ -37,18 +34,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
 
         installStatusItem()
         updatePopoverSize()
-
-        // A third-party menu-bar utility or a macOS Space change can detach a
-        // status item while the owning app continues to run. Keep the leaf
-        // available rather than requiring a relaunch.
-        statusItemWatchdog = Timer.scheduledTimer(
-            withTimeInterval: 15,
-            repeats: true
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.ensureStatusItemIsAvailable()
-            }
-        }
     }
 
     private func installStatusItem() {
@@ -77,15 +62,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         }
 
         statusItem = item
-        statusItemVisibilityObserver = item.observe(
-            \.isVisible,
-            options: [.new]
-        ) { [weak self] _, change in
-            guard change.newValue == false else { return }
-            DispatchQueue.main.async {
-                self?.ensureStatusItemIsAvailable()
-            }
-        }
     }
 
     /// Restores the menu-bar affordance after Finder reopens the app or macOS
@@ -96,34 +72,15 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     private func ensureStatusItemIsAvailable() {
-        // `isVisible` remains true when macOS has no room to draw an item, so
-        // check the actual status-button attachment as well. Recreate only
-        // after a short cooldown: repeatedly re-adding an item while the bar
-        // is full causes flicker and does not create space.
-        guard
-            statusItem.statusBar != nil,
-            statusItem.button != nil,
-            statusItem.button?.window != nil
-        else {
-            recoverStatusItem()
+        // A retained NSStatusItem is the supported AppKit ownership model.
+        // Do not poll/recreate it: a status-button window can temporarily be
+        // nil during Spaces and menu-bar transitions, and treating that as a
+        // failure makes the icon flicker or disappear.
+        guard statusItem.statusBar != nil, statusItem.button != nil else {
+            installStatusItem()
             return
         }
-
-        if !statusItem.isVisible {
-            statusItem.isVisible = true
-        }
-    }
-
-    private func recoverStatusItem() {
-        guard Date().timeIntervalSince(lastRecoveryAttempt) > 5 else { return }
-        lastRecoveryAttempt = Date()
-
-        closePopover()
-        if let statusItem {
-            NSStatusBar.system.removeStatusItem(statusItem)
-        }
-        statusItemVisibilityObserver?.invalidate()
-        installStatusItem()
+        statusItem.isVisible = true
     }
 
     @objc
