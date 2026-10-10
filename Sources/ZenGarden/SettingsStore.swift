@@ -29,6 +29,7 @@ final class SettingsStore: ObservableObject {
         static let dailyCutoffMinute = "zenGarden.dailyCutoffMinute.v1"
         static let allDayDefaultMigration = "zenGarden.allDayDefaultMigration.v1"
         static let facebookDefaultMigration = "zenGarden.facebookDefaultMigration.v1"
+        static let shoppingDefaultsMigration = "zenGarden.shoppingDefaultsMigration.v1"
         static let completedFocusDay = "zenGarden.completedFocusDay.v1"
     }
 
@@ -78,6 +79,7 @@ final class SettingsStore: ObservableObject {
 
         migratePriorWeekdayDefaultToAllDay()
         migrateFacebookToBlockedWebsites()
+        migrateShoppingDefaultsAndRemoveYouTube()
 
         // Version one allowed an unaccounted global pause. It is intentionally
         // retired now that every exception requires a reason.
@@ -114,6 +116,30 @@ final class SettingsStore: ObservableObject {
         }
 
         defaults.set(true, forKey: Key.facebookDefaultMigration)
+    }
+
+    /// Zen Garden is for focus, not a blanket media block. Keep YouTube
+    /// available for learning, while adding the user's shopping defaults once
+    /// to existing installations without overriding any sites they disabled.
+    private func migrateShoppingDefaultsAndRemoveYouTube() {
+        guard !defaults.bool(forKey: Key.shoppingDefaultsMigration) else { return }
+
+        let previousCount = websites.count
+        websites.removeAll { $0.domain == "youtube.com" }
+
+        let existingDomains = Set(websites.map(\.domain))
+        websites.append(
+            contentsOf: Self.shoppingDomains
+                .filter { !existingDomains.contains($0) }
+                .map { BlockedWebsite(domain: $0) }
+        )
+
+        if websites.count != previousCount || !Self.shoppingDomains.allSatisfy(existingDomains.contains) {
+            websites.sort { $0.domain.localizedStandardCompare($1.domain) == .orderedAscending }
+            persistWebsites()
+        }
+
+        defaults.set(true, forKey: Key.shoppingDefaultsMigration)
     }
 
     func focusState(at date: Date = Date(), calendar: Calendar = .current) -> FocusState {
@@ -422,14 +448,30 @@ final class SettingsStore: ObservableObject {
         if changed { persistBreakRecords() }
     }
 
-    private static let defaultWebsites = [
-        BlockedWebsite(domain: "facebook.com"),
-        BlockedWebsite(domain: "instagram.com"),
-        BlockedWebsite(domain: "reddit.com"),
-        BlockedWebsite(domain: "x.com"),
-        BlockedWebsite(domain: "tiktok.com"),
-        BlockedWebsite(domain: "youtube.com")
+    private static let shoppingDomains = [
+        "aliexpress.com",
+        "amazon.com",
+        "asos.com",
+        "bestbuy.com",
+        "costco.com",
+        "ebay.com",
+        "etsy.com",
+        "homedepot.com",
+        "ikea.com",
+        "lowes.com",
+        "nike.com",
+        "shein.com",
+        "target.com",
+        "temu.com",
+        "walmart.com",
+        "wayfair.com",
+        "zara.com"
     ]
+
+    private static let defaultWebsites = (
+        ["facebook.com", "instagram.com", "reddit.com", "tiktok.com", "x.com"]
+            + shoppingDomains
+    ).map { BlockedWebsite(domain: $0) }
 
     private static func validMinute(_ minute: Int) -> Int {
         min(max(minute, 0), (24 * 60) - 1)

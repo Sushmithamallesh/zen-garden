@@ -69,6 +69,16 @@ struct StoreTests {
             dailyStore.websites.contains { $0.domain == "facebook.com" && $0.isEnabled },
             "includes Facebook Marketplace through facebook.com"
         )
+        expect(
+            ["amazon.com", "ikea.com", "target.com", "walmart.com"].allSatisfy { domain in
+                dailyStore.websites.contains { $0.domain == domain && $0.isEnabled }
+            },
+            "includes common shopping sites in the default blocklist"
+        )
+        expect(
+            !dailyStore.websites.contains { $0.domain == "youtube.com" },
+            "keeps YouTube available for learning"
+        )
 
         let facebookSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
         let facebookDefaults = UserDefaults(suiteName: facebookSuite)!
@@ -80,8 +90,24 @@ struct StoreTests {
         )
         let facebookMigratedStore = SettingsStore(defaults: facebookDefaults)
         expect(
-            facebookMigratedStore.websites.map(\.domain) == ["facebook.com", "reddit.com"],
-            "adds Facebook to existing blocked website lists"
+            facebookMigratedStore.websites.contains { $0.domain == "facebook.com" }
+                && facebookMigratedStore.websites.contains { $0.domain == "amazon.com" }
+                && facebookMigratedStore.websites.contains { $0.domain == "reddit.com" },
+            "adds Facebook and shopping defaults to existing website lists"
+        )
+
+        let youtubeSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
+        let youtubeDefaults = UserDefaults(suiteName: youtubeSuite)!
+        youtubeDefaults.removePersistentDomain(forName: youtubeSuite)
+        defer { youtubeDefaults.removePersistentDomain(forName: youtubeSuite) }
+        youtubeDefaults.set(
+            try! JSONEncoder().encode([BlockedWebsite(domain: "youtube.com")]),
+            forKey: "zenGarden.websites.v1"
+        )
+        let youtubeMigratedStore = SettingsStore(defaults: youtubeDefaults)
+        expect(
+            !youtubeMigratedStore.websites.contains { $0.domain == "youtube.com" },
+            "removes YouTube from existing blocklists"
         )
 
         let migrationSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
@@ -343,8 +369,10 @@ struct StoreTests {
         )
         let invalidStore = SettingsStore(defaults: invalidDefaults)
         expect(
-            invalidStore.websites.map(\.domain) == ["facebook.com", "reddit.com"],
-            "normalizes persisted websites and adds the Facebook default"
+            invalidStore.websites.contains { $0.domain == "reddit.com" }
+                && invalidStore.websites.contains { $0.domain == "amazon.com" }
+                && !invalidStore.websites.contains { $0.domain == "bad..domain" },
+            "normalizes persisted websites and adds shopping defaults"
         )
         expect(
             invalidStore.schedules.first?.name == "Schedule"
