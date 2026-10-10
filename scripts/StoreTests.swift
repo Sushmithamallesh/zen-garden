@@ -65,6 +65,24 @@ struct StoreTests {
             dailyStore.websites.contains { $0.domain == "tiktok.com" && $0.isEnabled },
             "includes TikTok in the default blocked websites"
         )
+        expect(
+            dailyStore.websites.contains { $0.domain == "facebook.com" && $0.isEnabled },
+            "includes Facebook Marketplace through facebook.com"
+        )
+
+        let facebookSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
+        let facebookDefaults = UserDefaults(suiteName: facebookSuite)!
+        facebookDefaults.removePersistentDomain(forName: facebookSuite)
+        defer { facebookDefaults.removePersistentDomain(forName: facebookSuite) }
+        facebookDefaults.set(
+            try! JSONEncoder().encode([BlockedWebsite(domain: "reddit.com")]),
+            forKey: "zenGarden.websites.v1"
+        )
+        let facebookMigratedStore = SettingsStore(defaults: facebookDefaults)
+        expect(
+            facebookMigratedStore.websites.map(\.domain) == ["facebook.com", "reddit.com"],
+            "adds Facebook to existing blocked website lists"
+        )
 
         let migrationSuite = "com.sushmithamallesh.zengarden.tests.\(UUID().uuidString)"
         let migrationDefaults = UserDefaults(suiteName: migrationSuite)!
@@ -325,8 +343,8 @@ struct StoreTests {
         )
         let invalidStore = SettingsStore(defaults: invalidDefaults)
         expect(
-            invalidStore.websites.map(\.domain) == ["reddit.com"],
-            "normalizes, deduplicates, and removes invalid persisted websites"
+            invalidStore.websites.map(\.domain) == ["facebook.com", "reddit.com"],
+            "normalizes persisted websites and adds the Facebook default"
         )
         expect(
             invalidStore.schedules.first?.name == "Schedule"

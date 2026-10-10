@@ -28,6 +28,7 @@ final class SettingsStore: ObservableObject {
         static let dailyStartMinute = "zenGarden.dailyStartMinute.v1"
         static let dailyCutoffMinute = "zenGarden.dailyCutoffMinute.v1"
         static let allDayDefaultMigration = "zenGarden.allDayDefaultMigration.v1"
+        static let facebookDefaultMigration = "zenGarden.facebookDefaultMigration.v1"
         static let completedFocusDay = "zenGarden.completedFocusDay.v1"
     }
 
@@ -76,6 +77,7 @@ final class SettingsStore: ObservableObject {
         completedFocusDay = defaults.object(forKey: Key.completedFocusDay) as? Date
 
         migratePriorWeekdayDefaultToAllDay()
+        migrateFacebookToBlockedWebsites()
 
         // Version one allowed an unaccounted global pause. It is intentionally
         // retired now that every exception requires a reason.
@@ -97,6 +99,21 @@ final class SettingsStore: ObservableObject {
         }
 
         defaults.set(true, forKey: Key.allDayDefaultMigration)
+    }
+
+    /// Marketplace lives under facebook.com rather than a separate domain.
+    /// Add the parent domain once for existing installations so Facebook,
+    /// Marketplace, and their subdomains all follow the same focus rule.
+    private func migrateFacebookToBlockedWebsites() {
+        guard !defaults.bool(forKey: Key.facebookDefaultMigration) else { return }
+
+        if !websites.contains(where: { $0.domain == "facebook.com" }) {
+            websites.append(BlockedWebsite(domain: "facebook.com"))
+            websites.sort { $0.domain.localizedStandardCompare($1.domain) == .orderedAscending }
+            persistWebsites()
+        }
+
+        defaults.set(true, forKey: Key.facebookDefaultMigration)
     }
 
     func focusState(at date: Date = Date(), calendar: Calendar = .current) -> FocusState {
@@ -406,6 +423,7 @@ final class SettingsStore: ObservableObject {
     }
 
     private static let defaultWebsites = [
+        BlockedWebsite(domain: "facebook.com"),
         BlockedWebsite(domain: "instagram.com"),
         BlockedWebsite(domain: "reddit.com"),
         BlockedWebsite(domain: "x.com"),
